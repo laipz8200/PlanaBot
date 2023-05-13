@@ -9,14 +9,14 @@ class GroupMessage(BaseMessage, Plugin):
     group_id: int
     anonymous: Anonymous | None
 
-    async def reply(self, message: ArrayMessages | str, *args, **kwargs):
+    async def reply(self, message: ArrayMessages | str, at_sender: bool = False):
         if isinstance(message, str):
             text = message
             message = ArrayMessages()
             message.add_text(text)
         await self.queue.put(
             create_quick_operation_action(
-                self.origin_event, {"at_sender": True, "reply": message}
+                self.origin_event, {"at_sender": at_sender, "reply": message}
             )
         )
 

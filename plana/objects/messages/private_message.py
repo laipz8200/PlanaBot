@@ -8,7 +8,7 @@ class PrivateMessage(BaseMessage, Plugin):
     target_id: int
     temp_source: int | None
 
-    async def reply(self, message: ArrayMessages | str, *args, **kwargs):
+    async def reply(self, message: ArrayMessages | str):
         if isinstance(message, str):
             text = message
             message = ArrayMessages()
