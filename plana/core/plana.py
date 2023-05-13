@@ -96,7 +96,7 @@ class Plana:
                         obj.queue = self.actions_queue
                         self.plugins.append(obj)
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
-        logger.info(f"Loaded {len(self.plugins)} plugins: {plugins_name}")
+        logger.info(f"{len(self.plugins)} plugins Loaded: {plugins_name}")
 
     async def ws_endpoint(self, websocket: WebSocket):
         await websocket.accept()
