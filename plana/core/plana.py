@@ -36,8 +36,6 @@ class Plana:
         logging.getLogger("fastapi").setLevel(logging.CRITICAL)
 
         self.app.add_websocket_route("/ws", self.ws_endpoint)
-        self.app.add_websocket_route("/event", self.event_endpoint)
-        self.app.add_websocket_route("/api", self.api_endpoint)
 
     def run(self):
         uvicorn.run(
@@ -100,29 +98,9 @@ class Plana:
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
         logger.info(f"Loaded {len(self.plugins)} plugins: {plugins_name}")
 
-    async def api_endpoint(self, websocket: WebSocket):
-        await websocket.accept()
-
-        consumer_task = asyncio.create_task(self.action_consumer(websocket))
-        try:
-            await consumer_task
-        except Exception:
-            consumer_task.cancel()
-            await consumer_task
-
-        await websocket.close()
-
-    async def event_endpoint(self, websocket: WebSocket):
-        await websocket.accept()
-        while True:
-            event = await websocket.receive_json()
-            try:
-                await self.process(event)
-            except Exception as e:
-                logger.error(f"Get error {e} when processing event {event}")
-
     async def ws_endpoint(self, websocket: WebSocket):
         await websocket.accept()
+        logger.info(f"Client {websocket.client_id} connected to ws endpoint")
 
         consumer_task = asyncio.create_task(self.action_consumer(websocket))
         try:
@@ -130,12 +108,16 @@ class Plana:
                 try:
                     await self.process(event)
                 except Exception as e:
-                    logger.error(f"Get error {e} when processing event {event}")
+                    logger.error("=== Error Info ===")
+                    logger.error(f"Event: {event}")
+                    logger.error(f"Error: {e}")
+                    logger.error("==================")
         except Exception:
             consumer_task.cancel()
             await consumer_task
-
-        await websocket.close()
+        finally:
+            await websocket.close()
+            logger.info(f"Client {websocket.client_id} disconnected from ws endpoint")
 
     async def action_consumer(self, websocket: WebSocket):
         while True:

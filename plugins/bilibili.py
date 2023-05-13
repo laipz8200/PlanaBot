@@ -44,7 +44,7 @@ class Bilibili(Plugin):
 
     async def parse_short_url(self, short_url: str) -> str:
         async with httpx.AsyncClient() as client:
-            response = await client.get(short_url, follow_redirects=True)
+            response = await client.get(short_url, follow_redirects=True, timeout=10)
         return self.sanitize_bilibili(str(response.url))
 
     def sanitize_bilibili(self, url: str) -> str:
