@@ -5,19 +5,19 @@ from plana.objects.send_private_msg import (
 )
 
 
-def send_private_msg(
+def create_send_private_msg_action(
     user_id: int,
-    message: ArrayMessages | str,
+    messages: ArrayMessages | str,
     *args,
     **kwargs,
 ) -> None:
-    if isinstance(message, str):
-        text = message
-        message = ArrayMessages()
-        message.add_text(text)
+    if isinstance(messages, str):
+        text = messages
+        messages = ArrayMessages()
+        messages.add_text(text)
     action = SendPrivateMessageAction(
         params=SendPrivateMessageParams(
-            user_id=user_id, message=message, *args, **kwargs
+            user_id=user_id, message=messages, *args, **kwargs
         )
     )
     return action
