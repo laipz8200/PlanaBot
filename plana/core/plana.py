@@ -12,20 +12,41 @@ from plana.core.plugin import Plugin
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.group_message import create_group_message
 from plana.objects.messages.private_message import create_private_message
+import logging
 
 
 class Plana:
     def __init__(self, enabled_plugins: list[str]) -> None:
+        self.__version__ = "v0.1.0"
+
+        logger.info("Thanks for using")
+        logger.info("     ____  _        _    _   _    _")
+        logger.info("    |  _ \| |      / \  | \ | |  / \\")
+        logger.info("    | |_) | |     / _ \ |  \| | / _ \\")
+        logger.info("    |  __/| |___ / ___ \| |\  |/ ___ \\")
+        logger.info("    |_|   |_____/_/   \_\_| \_/_/   \_\\    - " + self.__version__)
+        logger.info("")
+
         self.plugins: list[Plugin] = []
         self.actions_queue = asyncio.Queue()
         self.load_plugins(enabled_plugins)
 
         self.app = FastAPI()
+
+        logging.getLogger("fastapi").setLevel(logging.CRITICAL)
+
+        self.app.add_websocket_route("/ws", self.ws_endpoint)
         self.app.add_websocket_route("/event", self.event_endpoint)
         self.app.add_websocket_route("/api", self.api_endpoint)
 
     def run(self):
-        uvicorn.run(self.app, host="127.0.0.1", port=8000)
+        uvicorn.run(
+            self.app,
+            host="127.0.0.1",
+            port=8000,
+            log_level=logging.CRITICAL,
+            access_log=False,
+        )
 
     async def process(self, event: dict) -> Any:
         post_type = event.get("post_type", None)
@@ -81,12 +102,15 @@ class Plana:
 
     async def api_endpoint(self, websocket: WebSocket):
         await websocket.accept()
-        while True:
-            if not self.actions_queue.empty():
-                action = await self.actions_queue.get()
-                await websocket.send_json(action.dict())
-            else:
-                await asyncio.sleep(0.1)
+
+        consumer_task = asyncio.create_task(self.action_consumer(websocket))
+        try:
+            await consumer_task
+        except Exception:
+            consumer_task.cancel()
+            await consumer_task
+
+        await websocket.close()
 
     async def event_endpoint(self, websocket: WebSocket):
         await websocket.accept()
@@ -96,3 +120,27 @@ class Plana:
                 await self.process(event)
             except Exception as e:
                 logger.error(f"Get error {e} when processing event {event}")
+
+    async def ws_endpoint(self, websocket: WebSocket):
+        await websocket.accept()
+
+        consumer_task = asyncio.create_task(self.action_consumer(websocket))
+        try:
+            async for event in websocket.iter_json():
+                try:
+                    await self.process(event)
+                except Exception as e:
+                    logger.error(f"Get error {e} when processing event {event}")
+        except Exception:
+            consumer_task.cancel()
+            await consumer_task
+
+        await websocket.close()
+
+    async def action_consumer(self, websocket: WebSocket):
+        while True:
+            if not self.actions_queue.empty():
+                action = await self.actions_queue.get()
+                await websocket.send_json(action.dict())
+            else:
+                await asyncio.sleep(0.1)
