@@ -4,6 +4,7 @@ import re
 import json
 from plana.core.plugin import Plugin
 from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+from plana.objects.messages.group_message import GroupMessage
 
 from plana.objects.messages.private_message import PrivateMessage
 
@@ -12,10 +13,12 @@ class Bilibili(Plugin):
     async def on_private(self, private_message: PrivateMessage):
         urls = await self.parse_message(private_message.message)
         if urls:
-            await private_message.reply(
-                self.queue,
-                "I found the following URLs in your message:\n" + "\n".join(urls),
-            )
+            await private_message.reply("\n".join(urls))
+
+    async def on_group(self, group_message: GroupMessage):
+        urls = await self.parse_message(group_message.message)
+        if urls:
+            await group_message.reply("\n".join(urls))
 
     async def parse_message(self, message: list[dict]) -> list[str]:
         short_urls = []
