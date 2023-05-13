@@ -3,6 +3,7 @@ import typing
 
 from pydantic import BaseModel
 from plana.actions.send_group_msg import create_send_group_msg_action
+from plana.actions.send_private_msg import create_send_private_msg_action
 
 from plana.objects.messages.array_messages import ArrayMessage
 
@@ -20,6 +21,9 @@ class Plugin(BaseModel):
 
     async def send_group_message(self, group_id: int, message: ArrayMessage | str):
         await self.queue.put(create_send_group_msg_action(group_id, message))
+
+    async def send_private_message(self, user_id: int, message: ArrayMessage | str):
+        await self.queue.put(create_send_private_msg_action(user_id, message))
 
     async def on_group(self, group_message: "GroupMessage"):
         pass
