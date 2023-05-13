@@ -100,7 +100,8 @@ class Plana:
 
     async def ws_endpoint(self, websocket: WebSocket):
         await websocket.accept()
-        logger.info(f"Client {websocket.client_id} connected to ws endpoint")
+        client_name = f"{websocket.client.host}:{websocket.client.port}"
+        logger.info(f"Client {client_name} connected")
 
         consumer_task = asyncio.create_task(self.action_consumer(websocket))
         try:
@@ -117,7 +118,7 @@ class Plana:
             await consumer_task
         finally:
             await websocket.close()
-            logger.info(f"Client {websocket.client_id} disconnected from ws endpoint")
+            logger.info(f"Client {client_name} disconnected")
 
     async def action_consumer(self, websocket: WebSocket):
         while True:
