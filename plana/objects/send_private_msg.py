@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from plana.actions.base import Action
-from plana.objects.messages.base import ArrayMessages
+from plana.objects.messages.base import ArrayMessage
 
 
 class SendPrivateMessageAction(Action):
@@ -10,5 +10,5 @@ class SendPrivateMessageAction(Action):
 class SendPrivateMessageParams(BaseModel):
     user_id: int
     group_id: int | None
-    message: ArrayMessages
+    message: ArrayMessage
     auto_escape: bool = False

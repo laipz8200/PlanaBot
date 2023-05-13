@@ -2,6 +2,9 @@ import asyncio
 import typing
 
 from pydantic import BaseModel
+from plana.actions.send_group_msg import create_send_group_msg_action
+
+from plana.objects.messages.array_messages import ArrayMessage
 
 if typing.TYPE_CHECKING:
     from plana.objects.messages.group_message import GroupMessage
@@ -14,6 +17,9 @@ class Plugin(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    async def send_group_message(self, group_id: int, message: ArrayMessage | str):
+        await self.queue.put(create_send_group_msg_action(group_id, message))
 
     async def on_group(self, group_message: "GroupMessage"):
         pass

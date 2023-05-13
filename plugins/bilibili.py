@@ -10,26 +10,26 @@ from plana.objects.messages.private_message import PrivateMessage
 
 class Bilibili(Plugin):
     async def on_private(self, private_message: PrivateMessage):
-        urls = await self.parse_messages(private_message.message)
+        urls = await self.parse_message(private_message.message)
         if urls:
             await private_message.reply(
                 self.queue,
                 "I found the following URLs in your message:\n" + "\n".join(urls),
             )
 
-    async def parse_messages(self, messages: list[dict]) -> list[str]:
+    async def parse_message(self, message: list[dict]) -> list[str]:
         short_urls = []
-        for message in messages:
-            msg_type = message.get("type")
+        for part in message:
+            msg_type = part.get("type")
             if msg_type == "json":
-                json_data = json.loads(message["data"]["data"])
+                json_data = json.loads(part["data"]["data"])
                 if "哔哩哔哩" in json_data.get("prompt", ""):
                     meta = json_data.get("meta", {})
                     detail_1 = meta.get("detail_1", {})
                     short_url = detail_1.get("qqdocurl")
                     short_urls.append(short_url)
             elif msg_type == "text":
-                text = message["data"]["text"]
+                text = part["data"]["text"]
                 pattern = r"https://b23\.tv/[\w\d]+"
                 short_urls = re.findall(pattern, text)
 

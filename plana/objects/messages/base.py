@@ -1,6 +1,6 @@
 from typing import Self
 from pydantic import BaseModel, validator
-from plana.objects.messages.array_messages import ArrayMessages
+from plana.objects.messages.array_messages import ArrayMessage
 from plana.objects.sender import Sender
 
 
@@ -9,7 +9,7 @@ class BaseMessage(BaseModel):
     sub_type: str
     message_id: int
     user_id: int
-    message: ArrayMessages
+    message: ArrayMessage
     raw_message: str
     font: int
     sender: Sender
@@ -18,8 +18,8 @@ class BaseMessage(BaseModel):
     origin_event: dict
 
     @validator("message")
-    def validate_message(cls, message: str) -> ArrayMessages:
-        return ArrayMessages(message)
+    def validate_message(cls, message: str) -> ArrayMessage:
+        return ArrayMessage(message)
 
     def plain_text(self) -> str:
         return self.message.plain_text()

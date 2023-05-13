@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from plana.actions.base import Action
-from plana.objects.messages.base import ArrayMessages
+from plana.objects.messages.base import ArrayMessage
 
 
 class SendGroupMessageAction(Action):
@@ -9,5 +9,5 @@ class SendGroupMessageAction(Action):
 
 class SendGroupMessageParams(BaseModel):
     group_id: int
-    message: ArrayMessages
+    message: ArrayMessage
     auto_escape: bool = False

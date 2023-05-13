@@ -1,17 +1,17 @@
 from plana.actions.quick_operation import create_quick_operation_action
 from plana.core.plugin import Plugin
 
-from plana.objects.messages.base import ArrayMessages, BaseMessage
+from plana.objects.messages.base import ArrayMessage, BaseMessage
 
 
 class PrivateMessage(BaseMessage, Plugin):
     target_id: int
     temp_source: int | None
 
-    async def reply(self, message: ArrayMessages | str):
+    async def reply(self, message: ArrayMessage | str):
         if isinstance(message, str):
             text = message
-            message = ArrayMessages()
+            message = ArrayMessage()
             message.add_text(text)
         await self.queue.put(
             create_quick_operation_action(self.origin_event, {"reply": message})

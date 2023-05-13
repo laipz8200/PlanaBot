@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Self
 
 
-class ArrayMessages(list):
+class ArrayMessage(list):
     def plain_text(self) -> str:
         return " ".join(
             [
