@@ -27,46 +27,12 @@ class Plana:
     ) -> None:
         self.__version__ = "v0.1.0"
 
-        logger.info("Thanks for using")
-        logger.info("     ____  _        _    _   _    _")
-        logger.info("    |  _ \| |      / \  | \ | |  / \\")
-        logger.info("    | |_) | |     / _ \ |  \| | / _ \\")
-        logger.info("    |  __/| |___ / ___ \| |\  |/ ___ \\")
-        logger.info("    |_|   |_____/_/   \_\_| \_/_/   \_\\    - " + self.__version__)
-        logger.info("")
-
-        self.config = config
-        if not self.config:
-            self.config = PlanaConfig()
-
-        if os.path.exists(config_file_path):
-            with open(config_file_path, "r") as f:
-                config_dict: dict = yaml.safe_load(f)
-                if config_dict:
-                    for k, v in config_dict.items():
-                        setattr(self.config, k, v)
-        else:
-            logger.info("No config file found, using default config")
-
-        plugins_dir = self.config.plugins_dir
-        for plugin_name in os.listdir(plugins_dir):
-            plugin_dir = os.path.join(plugins_dir, plugin_name)
-            if os.path.isdir(plugin_dir):
-                config_file = os.path.join(plugin_dir, "config.yaml")
-                if os.path.isfile(config_file):
-                    with open(config_file) as f:
-                        config_obj = yaml.safe_load(f)
-                        self.config.plugins_config[plugin_name] = config_obj
-
+        self.request_queue = asyncio.Queue()
+        self.subscribers: dict[str, asyncio.Queue] = {}
         self.plugins: list[Plugin] = []
-        self.actions_queue = asyncio.Queue()
 
-        self.app = FastAPI()
-        self.app.add_event_handler("startup", self.load_plugins)
-
-        logging.getLogger("fastapi").setLevel(logging.CRITICAL)
-
-        self.app.add_websocket_route("/ws", self.ws_endpoint)
+        self._load_config(config, config_file_path)
+        self._init_app()
 
     def run(self):
         uvicorn.run(
@@ -77,7 +43,16 @@ class Plana:
             access_log=False,
         )
 
-    async def process(self, event: dict) -> Any:
+    async def _run_broadcast(self):
+        asyncio.create_task(self._broadcast())
+
+    async def _broadcast(self):
+        while True:
+            action = await self.request_queue.get()
+            for subscriber in self.subscribers.values():
+                await subscriber.put(action)
+
+    async def _handle_event(self, event: dict) -> Any:
         post_type = event.get("post_type", None)
         if not post_type:
             return
@@ -88,12 +63,12 @@ class Plana:
             base_message = BaseMessage(**event)
 
             if base_message.message_type == "group":
-                await self.handle_group_message_event(event)
+                await self._handle_group_message_event(event)
 
             if base_message.message_type == "private":
-                await self.handle_private_message_event(event)
+                await self._handle_private_message_event(event)
 
-    async def handle_private_message_event(self, event: dict):
+    async def _handle_private_message_event(self, event: dict):
         private_message = PrivateMessage(**event)
         sender = private_message.sender
         logger.info(
@@ -114,7 +89,7 @@ class Plana:
 
             await plugin.on_private(private_message)
 
-    async def handle_group_message_event(self, event: dict):
+    async def _handle_group_message_event(self, event: dict):
         group_message = GroupMessage(**event)
         sender = group_message.sender
         logger.info(
@@ -146,7 +121,7 @@ class Plana:
 
         await asyncio.gather(*tasks)
 
-    def load_plugins(self) -> list[Plugin]:
+    def _init_plugins(self) -> list[Plugin]:
         enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
         plugins_dir = self.config.plugins_dir
         for filename in os.listdir(plugins_dir):
@@ -169,7 +144,7 @@ class Plana:
                     and obj.__name__.lower() in enabled_plugins
                 ):
                     plugin_config = {
-                        "queue": self.actions_queue,
+                        "queue": self.request_queue,
                         "config": self.config.copy().dict(),
                     }
                     plugin_config = self.merge_dict(
@@ -181,16 +156,18 @@ class Plana:
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
         logger.info(f"{len(self.plugins)} plugins Loaded: {plugins_name}")
 
-    async def ws_endpoint(self, websocket: WebSocket):
+    async def _ws_endpoint(self, websocket: WebSocket):
         await websocket.accept()
         client_name = f"{websocket.client.host}:{websocket.client.port}"
+        queue = asyncio.Queue()
+        self.subscribers[client_name] = queue
         logger.info(f"Client {client_name} connected")
 
-        consumer_task = asyncio.create_task(self.action_consumer(websocket))
+        consumer_task = asyncio.create_task(self._send_request(websocket, queue))
         try:
             async for event in websocket.iter_json():
                 try:
-                    await self.process(event)
+                    await self._handle_event(event)
                 except Exception as e:
                     logger.error("=== Error Info ===")
                     logger.error(f"Event: {event}")
@@ -201,15 +178,19 @@ class Plana:
             await consumer_task
         finally:
             await websocket.close()
+            del self.subscribers[client_name]
             logger.info(f"Client {client_name} disconnected")
 
-    async def action_consumer(self, websocket: WebSocket):
+    async def _send_request(self, websocket: WebSocket, queue: asyncio.Queue):
         while True:
-            if not self.actions_queue.empty():
-                action = await self.actions_queue.get()
+            action = await queue.get()
+            try:
                 await websocket.send_json(action.dict())
-            else:
-                await asyncio.sleep(0.1)
+            except Exception as e:
+                logger.error("=== Error Info ===")
+                logger.error(f"Action: {action}")
+                logger.error(f"Error: {e}")
+                logger.error("==================")
 
     def merge_dict(self, dict1, dict2):
         for key in dict2:
@@ -221,3 +202,45 @@ class Plana:
             else:
                 dict1[key] = dict2[key]
         return dict1
+
+    def _print_ascii_art(self):
+        logger.info("Thanks for using")
+        logger.info("     ____  _        _    _   _    _")
+        logger.info("    |  _ \| |      / \  | \ | |  / \\")
+        logger.info("    | |_) | |     / _ \ |  \| | / _ \\")
+        logger.info("    |  __/| |___ / ___ \| |\  |/ ___ \\")
+        logger.info("    |_|   |_____/_/   \_\_| \_/_/   \_\\    - " + self.__version__)
+        logger.info("")
+
+    def _load_config(self, config: PlanaConfig | None, config_file_path: str):
+        self.config = config
+        if not self.config:
+            self.config = PlanaConfig()
+
+        if os.path.exists(config_file_path):
+            with open(config_file_path, "r") as f:
+                config_dict: dict = yaml.safe_load(f)
+                if config_dict:
+                    for k, v in config_dict.items():
+                        setattr(self.config, k, v)
+        else:
+            logger.info("No config file found, using default config")
+
+        plugins_dir = self.config.plugins_dir
+        for plugin_name in os.listdir(plugins_dir):
+            plugin_dir = os.path.join(plugins_dir, plugin_name)
+            if os.path.isdir(plugin_dir):
+                config_file = os.path.join(plugin_dir, "config.yaml")
+                if os.path.isfile(config_file):
+                    with open(config_file) as f:
+                        config_obj = yaml.safe_load(f)
+                        self.config.plugins_config[plugin_name] = config_obj
+
+    def _init_app(self):
+        self.app = FastAPI()
+        logging.getLogger("fastapi").setLevel(logging.CRITICAL)
+
+        self.app.add_event_handler("startup", self._print_ascii_art)
+        self.app.add_event_handler("startup", self._init_plugins)
+        self.app.add_event_handler("startup", self._run_broadcast)
+        self.app.add_websocket_route("/ws", self._ws_endpoint)
