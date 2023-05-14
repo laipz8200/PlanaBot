@@ -35,7 +35,7 @@ class Chat(Plugin):
         if history_length > 50:
             self.history_messages = history_messages[history_length - 50 :]
 
-        if history_length > 10 and random.randint(1, 12) == 1:
+        if history_length > 3 and random.randint(1, 2) == 1:
             response = self._chat(history_messages)
             await self.send_group_message(group_message.group_id, response)
             history_messages.append(("You", response))
@@ -46,10 +46,10 @@ class Chat(Plugin):
         return prompts
 
     def _chat(self, history_messages: list[tuple[str, str]]) -> str:
-        messages = {
+        messages = [
             {"role": "system", "content": self.system_prompts},
             {"role": "user", "content": self._create_user_prompts(history_messages)},
-        }
+        ]
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=messages
         )
