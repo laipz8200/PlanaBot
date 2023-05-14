@@ -69,7 +69,6 @@ class Plana:
                 await self._handle_private_message_event(event)
 
     async def _handle_response(self, response: dict):
-        logger.debug(f"[Response] {response}")
         status = response.get("status", "")
         if not status:
             logger.warning(f"[Response] status not found in {response}")
