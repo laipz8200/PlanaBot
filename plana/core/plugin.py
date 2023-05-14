@@ -13,8 +13,7 @@ from plana.objects.get_login_info import LoginInfo
 from plana.objects.messages.array_messages import ArrayMessage
 
 if typing.TYPE_CHECKING:
-    from plana.objects.messages.group_message import GroupMessage
-    from plana.objects.messages.private_message import PrivateMessage
+    from plana import GroupMessage, PrivateMessage
 
 
 class Plugin(BaseModel):

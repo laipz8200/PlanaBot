@@ -9,7 +9,7 @@ class ArrayMessage(list):
                 m["data"]["text"]
                 for m in filter(lambda m: m.get("type", "") == "text", self)
             ]
-        )
+        ).strip()
 
     def add_text(self, text: str):
         self.append({"type": "text", "data": {"text": text}})
