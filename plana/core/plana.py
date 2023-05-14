@@ -4,7 +4,6 @@ import importlib.util
 import inspect
 import logging
 import os
-from typing import Any
 
 import uvicorn
 import yaml
@@ -27,9 +26,11 @@ class Plana:
     ) -> None:
         self.__version__ = "v0.1.0"
 
+        self.lock = asyncio.Lock()
         self.request_queue = asyncio.Queue()
         self.subscribers: dict[str, asyncio.Queue] = {}
         self.plugins: list[Plugin] = []
+        self.response: dict[str, dict] = {"_version": {}}
 
         self._load_config(config, config_file_path)
         self._init_app()
@@ -48,15 +49,14 @@ class Plana:
 
     async def _broadcast(self):
         while True:
-            action = await self.request_queue.get()
-            for subscriber in self.subscribers.values():
-                await subscriber.put(action)
+            try:
+                action = await self.request_queue.get()
+                for subscriber in self.subscribers.values():
+                    await subscriber.put(action)
+            except Exception as e:
+                logger.error(f"Failed to broadcast: {e}")
 
-    async def _handle_event(self, event: dict) -> Any:
-        post_type = event.get("post_type", None)
-        if not post_type:
-            return
-
+    async def _handle_event(self, post_type: str, event: dict):
         event["event"] = copy.deepcopy(event)
 
         if post_type in ["message", "message_sent"]:
@@ -67,6 +67,20 @@ class Plana:
 
             if base_message.message_type == "private":
                 await self._handle_private_message_event(event)
+
+    async def _handle_response(self, response: dict):
+        logger.debug(f"[Response] {response}")
+        status = response.get("status", "")
+        if not status:
+            logger.warning(f"[Response] status not found in {response}")
+        if status == "failed":
+            logger.error(f"[Response] action failed in {response}")
+        echo = response.get("echo", "")
+        if echo:
+            async with self.lock:
+                event: asyncio.Event = self.response[echo]["event"]
+                self.response[echo]["response"] = response
+                event.set()
 
     async def _handle_private_message_event(self, event: dict):
         private_message = PrivateMessage(**event)
@@ -79,6 +93,7 @@ class Plana:
             )
         )
 
+        tasks = []
         for plugin in self.plugins:
             private_message = private_message.load_plugin(plugin)
             if (
@@ -87,7 +102,13 @@ class Plana:
             ):
                 continue
 
-            await plugin.on_private(private_message)
+            tasks.append(plugin.on_private(private_message))
+
+            if plugin.prefix and private_message.starts_with(plugin.prefix):
+                message = private_message.remove_prefix(plugin.prefix)
+                tasks.append(plugin.on_private_prefix(message))
+
+        await asyncio.gather(*tasks)
 
     async def _handle_group_message_event(self, event: dict):
         group_message = GroupMessage(**event)
@@ -116,8 +137,8 @@ class Plana:
             tasks.append(plugin.on_group(group_message))
 
             if plugin.prefix and group_message.starts_with(plugin.prefix):
-                group_message = group_message.remove_prefix(plugin.prefix)
-                tasks.append(plugin.on_group_prefix(group_message))
+                message = group_message.remove_prefix(plugin.prefix)
+                tasks.append(plugin.on_group_prefix(message))
 
         await asyncio.gather(*tasks)
 
@@ -137,20 +158,23 @@ class Plana:
                 module = importlib.import_module(module_name)
             else:
                 continue
-            for _, obj in inspect.getmembers(module, inspect.isclass):
+            for _, cls in inspect.getmembers(module, inspect.isclass):
                 if (
-                    issubclass(obj, Plugin)
-                    and obj is not Plugin
-                    and obj.__name__.lower() in enabled_plugins
+                    issubclass(cls, Plugin)
+                    and cls is not Plugin
+                    and cls.__name__.lower() in enabled_plugins
                 ):
                     plugin_config = {
                         "queue": self.request_queue,
+                        "response": self.response,
+                        "lock": self.lock,
                         "config": self.config.copy().dict(),
                     }
-                    plugin_config = self.merge_dict(
+                    plugin_config = self._merge_dict(
                         plugin_config, self.config.plugins_config.get(filename, {})
                     )
-                    plugin = obj(**plugin_config)
+                    plugin = cls(**plugin_config)
+                    plugin.response = self.response
 
                     self.plugins.append(plugin)
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
@@ -165,12 +189,16 @@ class Plana:
 
         consumer_task = asyncio.create_task(self._send_request(websocket, queue))
         try:
-            async for event in websocket.iter_json():
+            async for data in websocket.iter_json():
+                post_type = data.get("post_type", None)
                 try:
-                    await self._handle_event(event)
+                    if not post_type:
+                        asyncio.create_task(self._handle_response(data))
+                    else:
+                        asyncio.create_task(self._handle_event(post_type, data))
                 except Exception as e:
                     logger.error("=== Error Info ===")
-                    logger.error(f"Event: {event}")
+                    logger.error(f"Event: {data}")
                     logger.error(f"Error: {e}")
                     logger.error("==================")
         except Exception:
@@ -183,8 +211,8 @@ class Plana:
 
     async def _send_request(self, websocket: WebSocket, queue: asyncio.Queue):
         while True:
-            action = await queue.get()
             try:
+                action = await queue.get()
                 await websocket.send_json(action.dict())
             except Exception as e:
                 logger.error("=== Error Info ===")
@@ -192,11 +220,11 @@ class Plana:
                 logger.error(f"Error: {e}")
                 logger.error("==================")
 
-    def merge_dict(self, dict1, dict2):
+    def _merge_dict(self, dict1, dict2):
         for key in dict2:
             if key in dict1:
                 if isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
-                    self.merge_dict(dict1[key], dict2[key])
+                    self._merge_dict(dict1[key], dict2[key])
                 else:
                     dict1[key] = dict2[key]
             else:

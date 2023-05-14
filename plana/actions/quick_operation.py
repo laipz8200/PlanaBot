@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from plana.actions.base import Action
+from plana.objects.base import Action
 
 
 class QuickOperationAction(Action):

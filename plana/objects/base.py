@@ -3,5 +3,5 @@ from pydantic import BaseModel
 
 class Action(BaseModel):
     action: str
-    params: dict
+    params: dict = {}
     echo: str = ""
