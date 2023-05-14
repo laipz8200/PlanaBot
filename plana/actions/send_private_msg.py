@@ -1,4 +1,4 @@
-from plana.objects.messages.base import ArrayMessage
+from plana.objects.messages.array_messages import ArrayMessage
 from plana.objects.send_private_msg import (
     SendPrivateMessageAction,
     SendPrivateMessageParams,

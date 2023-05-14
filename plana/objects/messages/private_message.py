@@ -1,10 +1,8 @@
 from plana.actions.quick_operation import create_quick_operation_action
-from plana.core.plugin import Plugin
-
 from plana.objects.messages.base import ArrayMessage, BaseMessage
 
 
-class PrivateMessage(BaseMessage, Plugin):
+class PrivateMessage(BaseMessage):
     target_id: int
     temp_source: int | None
 
@@ -14,10 +12,5 @@ class PrivateMessage(BaseMessage, Plugin):
             message = ArrayMessage()
             message.add_text(text)
         await self.queue.put(
-            create_quick_operation_action(self.origin_event, {"reply": message})
+            create_quick_operation_action(self.event, {"reply": message})
         )
-
-
-def create_private_message(message: dict, plugin: Plugin) -> PrivateMessage:
-    msg = PrivateMessage(**plugin.dict(), **message)
-    return msg

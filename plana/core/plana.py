@@ -1,22 +1,35 @@
-import copy
-import os
 import asyncio
-from fastapi import FastAPI, WebSocket
+import copy
 import importlib.util
+import logging
+import os
 from typing import Any
 
-from loguru import logger
 import uvicorn
-from plana.core.plugin import Plugin
+import yaml
+from fastapi import FastAPI, WebSocket
+from loguru import logger
+from pydantic import BaseModel
 
+from plana.core.plugin import Plugin
 from plana.objects.messages.base import BaseMessage
-from plana.objects.messages.group_message import create_group_message
-from plana.objects.messages.private_message import create_private_message
-import logging
+from plana.objects.messages.group_message import GroupMessage
+from plana.objects.messages.private_message import PrivateMessage
+
+
+class PlanaConfig(BaseModel):
+    master_id: int = 10000
+    allowed_groups: list[int] = []
+    enabled_plugins: list[str] = ["echo", "bilibili"]
 
 
 class Plana:
-    def __init__(self, enabled_plugins: list[str]) -> None:
+    def __init__(
+        self,
+        *,
+        config: PlanaConfig | None = None,
+        config_file_path: str = "config.yaml",
+    ) -> None:
         self.__version__ = "v0.1.0"
 
         logger.info("Thanks for using")
@@ -27,11 +40,27 @@ class Plana:
         logger.info("    |_|   |_____/_/   \_\_| \_/_/   \_\\    - " + self.__version__)
         logger.info("")
 
+        self.config = config
+        if not self.config:
+            self.config = PlanaConfig()
+
+        if not os.path.exists(config_file_path):
+            with open(config_file_path, "w") as f:
+                yaml.dump(config.dict(), f)
+            logger.critical("Please edit config.yaml and reboot")
+            exit(0)
+
+        with open(config_file_path, "r") as f:
+            config_dict: dict = yaml.safe_load(f)
+            if config_dict:
+                for k, v in config_dict.items():
+                    setattr(self.config, k, v)
+
         self.plugins: list[Plugin] = []
         self.actions_queue = asyncio.Queue()
-        self.load_plugins(enabled_plugins)
 
         self.app = FastAPI()
+        self.load_plugins(self.config.enabled_plugins)
 
         logging.getLogger("fastapi").setLevel(logging.CRITICAL)
 
@@ -51,27 +80,50 @@ class Plana:
         if not post_type:
             return
 
-        event["origin_event"] = copy.deepcopy(event)
+        event["event"] = copy.deepcopy(event)
 
         if post_type in ["message", "message_sent"]:
             base_message = BaseMessage(**event)
 
             if base_message.message_type == "group":
-                await self.handle_group_message(event)
+                await self.handle_group_message_event(event)
 
             if base_message.message_type == "private":
-                for plugin in self.plugins:
-                    private_message = create_private_message(event, plugin)
-                    await plugin.on_private(private_message)
+                await self.handle_private_message_event(event)
 
-    async def handle_group_message(self, message: dict):
+    async def handle_private_message_event(self, event: dict):
+        private_message = PrivateMessage(**event)
+        for plugin in self.plugins:
+            private_message = private_message.load_plugin(plugin)
+            if (
+                plugin.master_only
+                and private_message.sender.user_id != self.config.master_id
+            ):
+                continue
+
+            await plugin.on_private(private_message)
+
+    async def handle_group_message_event(self, event: dict):
+        group_message = GroupMessage(**event)
+        if group_message.group_id not in self.config.allowed_groups:
+            return
+
         tasks = []
         for plugin in self.plugins:
-            group_message = create_group_message(message, plugin)
+            group_message = group_message.load_plugin(plugin)
+
+            if (
+                plugin.master_only
+                and group_message.sender.user_id != self.config.master_id
+            ):
+                continue
+
             tasks.append(plugin.on_group(group_message))
+
             if plugin.prefix and group_message.starts_with(plugin.prefix):
                 group_message = group_message.remove_prefix(plugin.prefix)
                 tasks.append(plugin.on_group_prefix(group_message))
+
         await asyncio.gather(*tasks)
 
     def load_plugins(self, enabled_plugins: list[str]) -> list[Plugin]:

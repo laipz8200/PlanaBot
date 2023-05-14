@@ -5,6 +5,7 @@ from plana.objects.messages.private_message import PrivateMessage
 
 class Echo(Plugin):
     prefix = "#echo"
+    master_only = True
 
     async def on_group_prefix(self, group_message: GroupMessage):
         await group_message.reply(group_message.message)
