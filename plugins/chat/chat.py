@@ -16,7 +16,7 @@ Your character is a 15-year-old girl named Plana. You have a calm personality, s
 
 class Chat(Plugin):
     system_prompts: str = system_prompts
-    history_messages: list[tuple[str, str]] = []
+    history_messages: dict[int, list[tuple[str, str]]] = {}
     openai_api_key: str
 
     def __init__(self, *args, **kwargs) -> None:
@@ -28,27 +28,27 @@ class Chat(Plugin):
         content = group_message.plain_text()
         if not content:
             return
-        self.history_messages.append((sender_name, content))
-        history_length = len(self.history_messages)
+
+        history_messages = self.history_messages.setdefault(group_message.group_id, [])
+        history_messages.append((sender_name, content))
+        history_length = len(history_messages)
         if history_length > 50:
-            self.history_messages = self.history_messages[history_length - 50 :]
+            self.history_messages = history_messages[history_length - 50 :]
 
-        if len(self.history_messages) > 10 and random.randint(1, 12) == 1:
-            response = self._chat()
+        if history_length > 10 and random.randint(1, 12) == 1:
+            response = self._chat(history_messages)
             await self.send_group_message(group_message.group_id, response)
-            self.history_messages.append(("You", response))
+            history_messages.append(("You", response))
 
-    def _create_user_prompts(self) -> str:
-        prompts = "\n".join(
-            [f"{name}:{content}" for name, content in self.history_messages]
-        )
+    def _create_user_prompts(self, history_messages: list[tuple[str, str]]) -> str:
+        prompts = "\n".join([f"{name}:{content}" for name, content in history_messages])
         prompts += "\nYou:"
         return prompts
 
-    def _chat(self) -> str:
+    def _chat(self, history_messages: list[tuple[str, str]]) -> str:
         messages = {
             {"role": "system", "content": self.system_prompts},
-            {"role": "user", "content": self._create_user_prompts()},
+            {"role": "user", "content": self._create_user_prompts(history_messages)},
         }
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=messages
