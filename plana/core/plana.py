@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import importlib.util
+import inspect
 import logging
 import os
 from typing import Any
@@ -137,24 +138,28 @@ class Plana:
 
     def load_plugins(self) -> list[Plugin]:
         enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
-        for filename in os.listdir("plugins"):
+        plugins_dir = "plugins"
+        for filename in os.listdir(plugins_dir):
             if filename.endswith(".py"):
-                module_name = f"plugins.{filename[:-3]}"
+                module_name = f"{plugins_dir}.{filename[:-3]}"
                 spec = importlib.util.spec_from_file_location(
-                    module_name, f"plugins/{filename}"
+                    module_name, os.path.join(plugins_dir, filename)
                 )
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (
-                        isinstance(attr, type)
-                        and issubclass(attr, Plugin)
-                        and attr is not Plugin
-                        and attr_name.lower() in enabled_plugins
-                    ):
-                        obj = attr(queue=self.actions_queue, config=self.config.copy())
-                        self.plugins.append(obj)
+            elif os.path.isdir(os.path.join(plugins_dir, filename)):
+                module_name = f"{plugins_dir}.{filename}"
+                module = importlib.import_module(module_name)
+            else:
+                continue
+            for _, obj in inspect.getmembers(module, inspect.isclass):
+                if (
+                    issubclass(obj, Plugin)
+                    and obj is not Plugin
+                    and obj.__name__.lower() in enabled_plugins
+                ):
+                    plugin = obj(queue=self.actions_queue, config=self.config.copy())
+                    self.plugins.append(plugin)
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
         logger.info(f"{len(self.plugins)} plugins Loaded: {plugins_name}")
 
