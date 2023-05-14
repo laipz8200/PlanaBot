@@ -48,6 +48,16 @@ class Plana:
         else:
             logger.info("No config file found, using default config")
 
+        plugins_dir = self.config.plugins_dir
+        for plugin_name in os.listdir(plugins_dir):
+            plugin_dir = os.path.join(plugins_dir, plugin_name)
+            if os.path.isdir(plugin_dir):
+                config_file = os.path.join(plugin_dir, "config.yaml")
+                if os.path.isfile(config_file):
+                    with open(config_file) as f:
+                        config_obj = yaml.safe_load(f)
+                        self.config.plugins_config[plugin_name] = config_obj
+
         self.plugins: list[Plugin] = []
         self.actions_queue = asyncio.Queue()
 
@@ -158,7 +168,15 @@ class Plana:
                     and obj is not Plugin
                     and obj.__name__.lower() in enabled_plugins
                 ):
-                    plugin = obj(queue=self.actions_queue, config=self.config.copy())
+                    plugin_config = {
+                        "queue": self.actions_queue,
+                        "config": self.config.copy().dict(),
+                    }
+                    plugin_config = self.merge_dict(
+                        plugin_config, self.config.plugins_config.get(filename, {})
+                    )
+                    plugin = obj(**plugin_config)
+
                     self.plugins.append(plugin)
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
         logger.info(f"{len(self.plugins)} plugins Loaded: {plugins_name}")
@@ -192,3 +210,14 @@ class Plana:
                 await websocket.send_json(action.dict())
             else:
                 await asyncio.sleep(0.1)
+
+    def merge_dict(self, dict1, dict2):
+        for key in dict2:
+            if key in dict1:
+                if isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+                    self.merge_dict(dict1[key], dict2[key])
+                else:
+                    dict1[key] = dict2[key]
+            else:
+                dict1[key] = dict2[key]
+        return dict1

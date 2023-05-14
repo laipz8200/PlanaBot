@@ -6,3 +6,4 @@ class PlanaConfig(BaseModel):
     allowed_groups: list[int] = []
     enabled_plugins: list[str] = ["echo", "bilibili"]
     plugins_dir: str = "plugins"
+    plugins_config: dict = {}
