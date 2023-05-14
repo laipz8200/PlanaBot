@@ -138,7 +138,7 @@ class Plana:
 
     def load_plugins(self) -> list[Plugin]:
         enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
-        plugins_dir = "plugins"
+        plugins_dir = self.config.plugins_dir
         for filename in os.listdir(plugins_dir):
             if filename.endswith(".py"):
                 module_name = f"{plugins_dir}.{filename[:-3]}"
