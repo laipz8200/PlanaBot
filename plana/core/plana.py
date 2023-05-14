@@ -9,18 +9,12 @@ import uvicorn
 import yaml
 from fastapi import FastAPI, WebSocket
 from loguru import logger
-from pydantic import BaseModel
 
+from plana.core.config import PlanaConfig
 from plana.core.plugin import Plugin
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.group_message import GroupMessage
 from plana.objects.messages.private_message import PrivateMessage
-
-
-class PlanaConfig(BaseModel):
-    master_id: int = 10000
-    allowed_groups: list[int] = []
-    enabled_plugins: list[str] = ["echo", "bilibili"]
 
 
 class Plana:
@@ -44,23 +38,20 @@ class Plana:
         if not self.config:
             self.config = PlanaConfig()
 
-        if not os.path.exists(config_file_path):
-            with open(config_file_path, "w") as f:
-                yaml.dump(config.dict(), f)
-            logger.critical("Please edit config.yaml and reboot")
-            exit(0)
-
-        with open(config_file_path, "r") as f:
-            config_dict: dict = yaml.safe_load(f)
-            if config_dict:
-                for k, v in config_dict.items():
-                    setattr(self.config, k, v)
+        if os.path.exists(config_file_path):
+            with open(config_file_path, "r") as f:
+                config_dict: dict = yaml.safe_load(f)
+                if config_dict:
+                    for k, v in config_dict.items():
+                        setattr(self.config, k, v)
+        else:
+            logger.info("No config file found, using default config")
 
         self.plugins: list[Plugin] = []
         self.actions_queue = asyncio.Queue()
 
         self.app = FastAPI()
-        self.load_plugins(self.config.enabled_plugins)
+        self.app.add_event_handler("startup", self.load_plugins)
 
         logging.getLogger("fastapi").setLevel(logging.CRITICAL)
 
@@ -144,8 +135,8 @@ class Plana:
 
         await asyncio.gather(*tasks)
 
-    def load_plugins(self, enabled_plugins: list[str]) -> list[Plugin]:
-        enabled_plugins = list(map(lambda x: x.lower(), enabled_plugins))
+    def load_plugins(self) -> list[Plugin]:
+        enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
         for filename in os.listdir("plugins"):
             if filename.endswith(".py"):
                 module_name = f"plugins.{filename[:-3]}"
@@ -162,8 +153,7 @@ class Plana:
                         and attr is not Plugin
                         and attr_name.lower() in enabled_plugins
                     ):
-                        obj = attr()
-                        obj.queue = self.actions_queue
+                        obj = attr(queue=self.actions_queue, config=self.config.copy())
                         self.plugins.append(obj)
         plugins_name = ", ".join([plugin.__class__.__name__ for plugin in self.plugins])
         logger.info(f"{len(self.plugins)} plugins Loaded: {plugins_name}")

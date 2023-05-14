@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from plana.actions.send_group_msg import create_send_group_msg_action
 from plana.actions.send_private_msg import create_send_private_msg_action
+from plana.core.config import PlanaConfig
 from plana.objects.messages.array_messages import ArrayMessage
 
 if typing.TYPE_CHECKING:
@@ -16,6 +17,7 @@ class Plugin(BaseModel):
     queue: asyncio.Queue | None = None
     prefix: str | None = None
     master_only: bool = False
+    config: PlanaConfig = PlanaConfig()
 
     class Config:
         arbitrary_types_allowed = True

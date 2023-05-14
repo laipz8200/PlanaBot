@@ -1,4 +1,4 @@
-from plana.core.plugin import Plugin
+from plana import Plugin
 from plana.objects.messages.group_message import GroupMessage
 from plana.objects.messages.private_message import PrivateMessage
 
