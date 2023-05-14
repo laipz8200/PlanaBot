@@ -15,10 +15,11 @@ class MikanAnime(Plugin):
         super().__init__(*args, **kwargs)
 
         scheduler = AsyncIOScheduler()
-        scheduler.add_job(self.check_update, "interval", seconds=10)
+        scheduler.add_job(self.check_update, "cron", hour="18-23")
         scheduler.start()
 
     async def check_update(self):
+        logger.info("[MikanAnime] Start check update")
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(self.rss_url, timeout=3)

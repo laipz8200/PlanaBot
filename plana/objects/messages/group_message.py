@@ -1,4 +1,3 @@
-from plana.actions.send_group_msg import create_send_group_msg_action
 from plana.objects.messages.array_messages import ArrayMessage
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.reply import create_reply
@@ -9,10 +8,20 @@ class GroupMessage(BaseMessage):
     group_id: int
     anonymous: Anonymous | None
 
+    def __str__(self) -> str:
+        return (
+            f"[GroupMessage] {self.group_id} "
+            f"{self.sender.nickname}({self.sender.user_id}): "
+            f"{self.message}"
+        )
+
+    def __repr__(self) -> str:
+        return str(self)
+
     async def reply(self, message: ArrayMessage | str):
         if isinstance(message, str):
             text = message
             message = ArrayMessage()
             message.add_text(text)
         message.insert(0, create_reply(self.message_id))
-        await self.queue.put(create_send_group_msg_action(self.group_id, message))
+        await self.plugin.send_group_message(self.group_id, message)

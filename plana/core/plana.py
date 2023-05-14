@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import importlib.util
 import inspect
 import logging
@@ -7,11 +6,12 @@ import os
 
 import uvicorn
 import yaml
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from loguru import logger
 
 from plana.core.config import PlanaConfig
 from plana.core.plugin import Plugin
+from plana.objects.action import Action
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.group_message import GroupMessage
 from plana.objects.messages.private_message import PrivateMessage
@@ -35,11 +35,11 @@ class Plana:
         self._load_config(config, config_file_path)
         self._init_app()
 
-    def run(self):
-        uvicorn.run(
+    def run(self, host: str = "127.0.0.1", port: int = 8000) -> None:
+        return uvicorn.run(
             self.app,
-            host="127.0.0.1",
-            port=8000,
+            host=host,
+            port=port,
             log_level=logging.CRITICAL,
             access_log=False,
         )
@@ -51,22 +51,22 @@ class Plana:
         while True:
             try:
                 action = await self.request_queue.get()
-                for subscriber in self.subscribers.values():
-                    await subscriber.put(action)
+                tasks = [
+                    subscriber.put(action) for subscriber in self.subscribers.values()
+                ]
+                asyncio.gather(*tasks)
             except Exception as e:
                 logger.error(f"Failed to broadcast: {e}")
 
     async def _handle_event(self, post_type: str, event: dict):
-        event["event"] = copy.deepcopy(event)
-
         if post_type in ["message", "message_sent"]:
             base_message = BaseMessage(**event)
 
             if base_message.message_type == "group":
-                await self._handle_group_message_event(event)
+                asyncio.create_task(self._handle_group_message_event(event))
 
             if base_message.message_type == "private":
-                await self._handle_private_message_event(event)
+                asyncio.create_task(self._handle_private_message_event(event))
 
     async def _handle_response(self, response: dict):
         status = response.get("status", "")
@@ -83,63 +83,52 @@ class Plana:
 
     async def _handle_private_message_event(self, event: dict):
         private_message = PrivateMessage(**event)
-        sender = private_message.sender
-        logger.info(
-            (
-                f"[Private] "
-                f"{sender.nickname}({sender.user_id}): "
-                f"{private_message.message}"
-            )
-        )
+        logger.info(private_message)
 
-        tasks = []
-        for plugin in self.plugins:
-            private_message = private_message.load_plugin(plugin)
-            if (
+        plugins = filter(
+            lambda plugin: (not plugin.master_only)
+            or (
                 plugin.master_only
-                and private_message.sender.user_id != self.config.master_id
-            ):
-                continue
+                and private_message.sender.user_id == self.config.master_id
+            ),
+            self.plugins,
+        )
+        plugins = list(plugins)
+        tasks = [plugin.handle_on_private(private_message) for plugin in plugins]
 
-            tasks.append(plugin.on_private(private_message))
-
-            if plugin.prefix and private_message.starts_with(plugin.prefix):
-                message = private_message.remove_prefix(plugin.prefix)
-                tasks.append(plugin.on_private_prefix(message))
-
-        await asyncio.gather(*tasks)
+        plugins = filter(
+            lambda plugin: plugin.prefix and private_message.starts_with(plugin.prefix),
+            plugins,
+        )
+        tasks += [
+            plugin.handle_on_private_prefix(private_message) for plugin in plugins
+        ]
+        asyncio.gather(*tasks)
 
     async def _handle_group_message_event(self, event: dict):
         group_message = GroupMessage(**event)
-        sender = group_message.sender
-        logger.info(
-            (
-                f"[Group] {group_message.group_id} "
-                f"{sender.nickname}({sender.user_id}): "
-                f"{group_message.message}"
-            )
+        logger.info(group_message)
+
+        plugins = filter(
+            lambda plugin: (group_message.group_id in plugin.config.allowed_groups)
+            and (
+                (not plugin.master_only)
+                or (
+                    plugin.master_only
+                    and group_message.sender.user_id == self.config.master_id
+                )
+            ),
+            self.plugins,
         )
+        plugins = list(plugins)
+        tasks = [plugin.handle_on_group(group_message) for plugin in plugins]
 
-        if group_message.group_id not in self.config.allowed_groups:
-            return
-
-        tasks = []
-        for plugin in self.plugins:
-            group_message = group_message.load_plugin(plugin)
-
-            if (
-                plugin.master_only
-                and group_message.sender.user_id != self.config.master_id
-            ):
-                continue
-
-            tasks.append(plugin.on_group(group_message))
-
-            if plugin.prefix and group_message.starts_with(plugin.prefix):
-                message = group_message.remove_prefix(plugin.prefix)
-                tasks.append(plugin.on_group_prefix(message))
-
-        await asyncio.gather(*tasks)
+        plugins = filter(
+            lambda plugin: plugin.prefix and group_message.starts_with(plugin.prefix),
+            plugins,
+        )
+        tasks += [plugin.handle_on_group_prefix(group_message) for plugin in plugins]
+        asyncio.gather(*tasks)
 
     def _init_plugins(self) -> list[Plugin]:
         enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
@@ -173,6 +162,7 @@ class Plana:
                         plugin_config, self.config.plugins_config.get(filename, {})
                     )
                     plugin = cls(**plugin_config)
+                    # FIXME: not sure if this is the best way to do this
                     plugin.response = self.response
 
                     self.plugins.append(plugin)
@@ -186,36 +176,21 @@ class Plana:
         self.subscribers[client_name] = queue
         logger.info(f"Client {client_name} connected")
 
-        consumer_task = asyncio.create_task(self._send_request(websocket, queue))
-        try:
-            while True:
-                tasks = [
-                    asyncio.create_task(self._handle_response(data))
-                    if not data.get("post_type")
-                    else asyncio.create_task(
-                        self._handle_event(data["post_type"], data)
-                    )
-                    for data in (await websocket.receive_json(),)
-                ]
-                await asyncio.gather(*tasks)
-        except WebSocketDisconnect:
-            consumer_task.cancel()
-            await consumer_task
-        finally:
-            await websocket.close()
-            del self.subscribers[client_name]
-            logger.info(f"Client {client_name} disconnected")
+        asyncio.create_task(self._send_request(websocket, queue))
+        async for data in websocket.iter_json():
+            post_type = data.get("post_type", None)
+            if post_type:
+                asyncio.create_task(self._handle_event(post_type, data))
+            else:
+                asyncio.create_task(self._handle_response(data))
+        await websocket.close()
+        del self.subscribers[client_name]
+        logger.info(f"Client {client_name} disconnected")
 
     async def _send_request(self, websocket: WebSocket, queue: asyncio.Queue):
         while True:
-            try:
-                action = await queue.get()
-                await websocket.send_json(action.dict())
-            except Exception as e:
-                logger.error("=== Error Info ===")
-                logger.error(f"Action: {action}")
-                logger.error(f"Error: {e}")
-                logger.error("==================")
+            action: Action = await queue.get()
+            await websocket.send_json(action.dict())
 
     def _merge_dict(self, dict1, dict2):
         for key in dict2:

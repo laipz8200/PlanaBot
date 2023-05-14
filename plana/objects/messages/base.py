@@ -1,13 +1,13 @@
 from typing import Self
 
-from pydantic import validator
+from pydantic import BaseModel, validator
 
 from plana.core.plugin import Plugin
 from plana.objects.messages.array_messages import ArrayMessage
 from plana.objects.sender import Sender
 
 
-class BaseMessage(Plugin):
+class BaseMessage(BaseModel):
     message_type: str
     sub_type: str
     message_id: int
@@ -18,16 +18,14 @@ class BaseMessage(Plugin):
     sender: Sender
     time: int
     self_id: int
-    event: dict
+    plugin: Plugin | None = None
 
     @validator("message")
     def validate_message(cls, message: str) -> ArrayMessage:
         return ArrayMessage(message)
 
-    def load_plugin(self, plugin: Plugin) -> Self:
-        params = self.dict()
-        params.update(plugin.dict())
-        return self.__class__(**params)
+    def load_plugin(self, plugin: Plugin):
+        self.plugin = plugin
 
     def plain_text(self) -> str:
         return self.message.plain_text()
