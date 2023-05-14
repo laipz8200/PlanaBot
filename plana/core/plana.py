@@ -93,6 +93,15 @@ class Plana:
 
     async def handle_private_message_event(self, event: dict):
         private_message = PrivateMessage(**event)
+        sender = private_message.sender
+        logger.info(
+            (
+                f"[Private] "
+                f"{sender.nickname}({sender.user_id}): "
+                f"{private_message.message}"
+            )
+        )
+
         for plugin in self.plugins:
             private_message = private_message.load_plugin(plugin)
             if (
@@ -105,6 +114,15 @@ class Plana:
 
     async def handle_group_message_event(self, event: dict):
         group_message = GroupMessage(**event)
+        sender = group_message.sender
+        logger.info(
+            (
+                f"[Group] {group_message.group_id} "
+                f"{sender.nickname}({sender.user_id}): "
+                f"{group_message.message}"
+            )
+        )
+
         if group_message.group_id not in self.config.allowed_groups:
             return
 
