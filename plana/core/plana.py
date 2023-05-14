@@ -7,7 +7,7 @@ import os
 
 import uvicorn
 import yaml
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from plana.core.config import PlanaConfig
@@ -188,19 +188,17 @@ class Plana:
 
         consumer_task = asyncio.create_task(self._send_request(websocket, queue))
         try:
-            async for data in websocket.iter_json():
-                post_type = data.get("post_type", None)
-                try:
-                    if not post_type:
-                        asyncio.create_task(self._handle_response(data))
-                    else:
-                        asyncio.create_task(self._handle_event(post_type, data))
-                except Exception as e:
-                    logger.error("=== Error Info ===")
-                    logger.error(f"Event: {data}")
-                    logger.error(f"Error: {e}")
-                    logger.error("==================")
-        except Exception:
+            while True:
+                tasks = [
+                    asyncio.create_task(self._handle_response(data))
+                    if not data.get("post_type")
+                    else asyncio.create_task(
+                        self._handle_event(data["post_type"], data)
+                    )
+                    for data in (await websocket.receive_json(),)
+                ]
+                await asyncio.gather(*tasks)
+        except WebSocketDisconnect:
             consumer_task.cancel()
             await consumer_task
         finally:
