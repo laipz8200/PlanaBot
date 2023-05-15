@@ -1,3 +1,4 @@
+import asyncio
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -38,9 +39,14 @@ class MikanAnime(Plugin):
         ]
         if not rs:
             return
-        self.previous_records = [r["title"] for r in rs]
         message = "\n".join(
             ["你订阅的番剧更新啦!!!"] + [f'{i["title"]}\n详情: {i["link"]}' for i in rs]
         )
-        for gid in self.config.allowed_groups:
-            await self.send_group_message(gid, message)
+        if self.previous_records:
+            asyncio.gather(
+                *[
+                    self.send_group_message(gid, message)
+                    for gid in self.config.allowed_groups
+                ]
+            )
+        self.previous_records = [r["title"] for r in rs]
