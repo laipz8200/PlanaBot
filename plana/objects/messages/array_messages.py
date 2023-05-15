@@ -4,11 +4,8 @@ from typing import Self
 
 class ArrayMessage(list):
     def plain_text(self) -> str:
-        return " ".join(
-            [
-                m["data"]["text"]
-                for m in filter(lambda m: m.get("type", "") == "text", self)
-            ]
+        return ", ".join(
+            [m["data"]["text"] for m in filter(lambda m: m["type"] == "text", self)]
         ).strip()
 
     def add_text(self, text: str):

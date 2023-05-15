@@ -65,6 +65,7 @@ class Chat(Plugin):
             or group_message.contains("Plana", ignore_case=True)
             or random.randint(1, 10) == 1
         ):
+            logger.debug("[Chat] trigger a response")
             response = self._chat(history_messages)
             await self.send_group_message(group_message.group_id, response)
             history_messages.append((current_datetime(), "Plana", response))
@@ -92,14 +93,14 @@ class Chat(Plugin):
                     "[{}]({})".format(message["data"]["url"], message["data"]["title"])
                 )
         message = " ".join(messages)
-        logger.debug(f"[Chat] parsed message: {messages}")
+        logger.debug(f"[Chat] parsed message: {message}")
         return message
 
     def _create_user_prompts(self, history_messages: list[tuple[str, str]]) -> str:
         prompts = "\n".join(
             [f"{dt} {name}:{content}" for dt, name, content in history_messages]
         )
-        prompts += "\nPlana:"
+        prompts += f"\n{current_datetime()} Plana:"
         return prompts
 
     def _chat(self, history_messages: list[tuple[str, str]]) -> str:
