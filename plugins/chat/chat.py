@@ -99,18 +99,17 @@ class Chat(Plugin):
                 message_type == "at"
                 and int(message["data"]["qq"]) == group_message.self_id
             ):
-                messages.append("Plana")
+                messages.append("@Plana")
             elif message_type == "at":
                 info = await self.get_group_member_info(
                     group_message.group_id, int(message["data"]["qq"])
                 )
-                messages.append(info.nickname)
+                messages.append("@" + info.nickname)
             elif message_type == "share":
                 messages.append(
                     "[{}]({})".format(message["data"]["url"], message["data"]["title"])
                 )
         message = " ".join(messages)
-        logger.debug(f"[Chat] parsed message: {message}")
         return message
 
     def _create_user_prompts(self, records: list[tuple]) -> str:
@@ -160,11 +159,8 @@ class Chat(Plugin):
             messages=messages,
         )
         answer = response["choices"][0]["message"]["content"].lower()
-
         for classify in self.classify:
             if classify in answer:
                 logger.debug(f"[Chat] Classify result: {classify}")
                 return classify
-
-        logger.debug("[Chat] Classify result: other")
         return "other"
