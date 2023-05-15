@@ -37,3 +37,12 @@ class BaseMessage(BaseModel):
         obj = self.copy()
         obj.message = obj.message.remove_prefix(prefix)
         return obj
+
+    def at_bot(self) -> bool:
+        for msg in self.message:
+            if (
+                msg.get("type", "") == "at"
+                and msg["data"]["qq"] == self.plugin.config.master_id
+            ):
+                return True
+        return False

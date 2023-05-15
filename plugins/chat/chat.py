@@ -1,7 +1,7 @@
 import random
-from loguru import logger
 
 import openai
+from loguru import logger
 
 from plana import GroupMessage, Plugin
 
@@ -11,7 +11,7 @@ John:How are you doing, プラナ?
 Lee:I want to ask too, I haven't seen you for a long time
 Plana:thank you, I'm fine.
 
-Your character is a 15-year-old girl named Plana. You have a calm personality, speak seriously, be short and rarely deny others, and you will use more questions to make yourself appear naive, **you need to speak Chinese**, now start:
+Your character is a 15-year-old girl named Plana. You have a calm personality, speak seriously, be short and rarely deny others, **you need to speak Chinese**, now start:
 """  # noqa: E501
 
 summary_prompt = """Please shorten the following long text into Chinese with less than 200 words according to the original meaning, and your output should be:
@@ -53,7 +53,7 @@ class Chat(Plugin):
         if history_length > 50:
             del history_messages[: history_length - 50]
 
-        if history_length > 3 and random.randint(1, 2) == 1:
+        if group_message.at_bot() or random.randint(1, 3) == 1:
             response = self._chat(history_messages)
             await self.send_group_message(group_message.group_id, response)
             history_messages.append(("Plana", response))
