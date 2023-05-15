@@ -59,7 +59,7 @@ class Chat(Plugin):
             await self._do_chat(group_message, records)
             return
         elif random.random() < 0.25:
-            classify = self._get_classify(records)
+            classify = self._get_classify(records[-5:])
             if classify == "academic":
                 pass
             elif classify in ["computer technology", "game"]:
