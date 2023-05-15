@@ -67,12 +67,13 @@ class Chat(Plugin):
             elif message_type == "text":
                 messages.append(message["data"]["text"])
             elif (
-                message_type == "at" and message["data"]["qq"] == group_message.self_id
+                message_type == "at"
+                and int(message["data"]["qq"]) == group_message.self_id
             ):
                 messages.append("プラナ")
             elif message_type == "at":
                 info = await self.get_group_member_info(
-                    group_message.group_id, message["data"]["qq"]
+                    group_message.group_id, int(message["data"]["qq"])
                 )
                 messages.append(info.nickname)
             elif message_type == "share":
