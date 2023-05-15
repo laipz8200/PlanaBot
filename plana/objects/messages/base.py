@@ -43,3 +43,8 @@ class BaseMessage(BaseModel):
             if msg.get("type", "") == "at" and int(msg["data"]["qq"]) == self.self_id:
                 return True
         return False
+
+    def contains(self, text: str, ignore_case: bool = False) -> bool:
+        if ignore_case:
+            return text.lower() in self.plain_text().lower()
+        return text in self.plain_text()

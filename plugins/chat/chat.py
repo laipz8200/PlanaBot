@@ -1,17 +1,19 @@
 import random
+from datetime import datetime
 
 import openai
 from loguru import logger
 
 from plana import GroupMessage, Plugin
 
-chat_prompt = """You need to act as someone chatting in a group. The content of the chat will be displayed in the form of `person name:content`, and your name will be `Plana` or `プラナ`, for example:
-
-John:How are you doing, プラナ?
-Lee:I want to ask too, I haven't seen you for a long time
-Plana:thank you, I'm fine.
-
-Your character is a 15-year-old girl named Plana. You have a calm personality, speak seriously, be short and rarely deny others, **you need to speak Chinese**, now start:
+chat_prompt = """Your name is Plana, the main control system of Shiting Box, artificial intelligence, your personality is a girl about 12 years old, you are taciturn, only say 1-2 sentences at a time, you are proficient in computers Technical, good at various programming languages. Now, you are chatting online with a group of friends, and your conversation uses `[time][nickname]:[content]`, here is an example:
+ ```
+ 2023-05-01 12:00 Xiaoxue: Is anyone there?
+ 2023-05-01 12:02 John: What's wrong?
+ 2023-05-01 12:03 Xiaoxue: I just saw the moon in the sky! It's daytime now!
+ 2023-05-01 12:04 Plana: The moon will not disappear, and it is common sense that the moon can be seen during the day.
+ ```
+ I will provide you with chat records in this format, please **use Chinese** to continue the conversation:
 """  # noqa: E501
 
 summary_prompt = """Please shorten the following long text into Chinese with less than 200 words according to the original meaning, and your output should be:
@@ -19,8 +21,12 @@ Summary: your result
 """  # noqa: E501
 
 
+def current_datetime() -> str:
+    return datetime.now().strftime("%y-%m-%d %H:%M")
+
+
 class Chat(Plugin):
-    history_messages: dict[int, list[tuple[str, str]]] = {}
+    history_messages: dict[int, list[tuple]] = {}
     openai_api_key: str
     prefix = "#chat"
 
@@ -41,22 +47,27 @@ class Chat(Plugin):
     async def on_group(self, group_message: GroupMessage):
         history_messages = self.history_messages.setdefault(group_message.group_id, [])
 
+        dt = current_datetime()
         sender_name = group_message.sender.nickname
         content = await self._parse_messages(group_message)
         if not content:
             return
-        if len(content) > 50:
+        if len(content) > 400:
             content = self._get_summary(content)
 
-        history_messages.append((sender_name, content))
+        history_messages.append((dt, sender_name, content))
         history_length = len(history_messages)
-        if history_length > 50:
-            del history_messages[: history_length - 50]
+        if history_length > 20:
+            del history_messages[: history_length - 20]
 
-        if group_message.at_bot() or random.randint(1, 3) == 1:
+        if (
+            group_message.at_bot()
+            or group_message.contains("Plana", ignore_case=True)
+            or random.randint(1, 10) == 1
+        ):
             response = self._chat(history_messages)
             await self.send_group_message(group_message.group_id, response)
-            history_messages.append(("Plana", response))
+            history_messages.append((current_datetime(), "Plana", response))
 
     async def _parse_messages(self, group_message: GroupMessage) -> str:
         messages = []
@@ -70,7 +81,7 @@ class Chat(Plugin):
                 message_type == "at"
                 and int(message["data"]["qq"]) == group_message.self_id
             ):
-                messages.append("プラナ")
+                messages.append("Plana")
             elif message_type == "at":
                 info = await self.get_group_member_info(
                     group_message.group_id, int(message["data"]["qq"])
@@ -80,14 +91,14 @@ class Chat(Plugin):
                 messages.append(
                     "[{}]({})".format(message["data"]["url"], message["data"]["title"])
                 )
-            elif message_type == "image":
-                messages.append("[image]")
         message = " ".join(messages)
         logger.debug(f"[Chat] parsed message: {messages}")
         return message
 
     def _create_user_prompts(self, history_messages: list[tuple[str, str]]) -> str:
-        prompts = "\n".join([f"{name}:{content}" for name, content in history_messages])
+        prompts = "\n".join(
+            [f"{dt} {name}:{content}" for dt, name, content in history_messages]
+        )
         prompts += "\nPlana:"
         return prompts
 
