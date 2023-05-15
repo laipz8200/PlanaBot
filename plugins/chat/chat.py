@@ -33,7 +33,7 @@ class Chat(Plugin):
         history_messages.append((sender_name, content))
         history_length = len(history_messages)
         if history_length > 50:
-            self.history_messages = history_messages[history_length - 50 :]
+            del history_messages[: history_length - 50]
 
         if history_length > 3 and random.randint(1, 2) == 1:
             response = self._chat(history_messages)
