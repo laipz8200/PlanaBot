@@ -24,7 +24,7 @@ classify_prompt = """Now, you are chatting online with a group of friends, and y
 2023-05-01 12:03 Xiaoxue: I just saw the moon in the sky! It's daytime now!
 2023-05-01 12:04 Plana: The moon will not disappear, and it is common sense that the moon can be seen during the day.
 ```
-I will provide you with chat records in this format, Please judge which type of ["small talk", "academic", "computer technology", "life", "other"] the above conversation is most likely to belong to, and your output should be:
+I will provide you with chat records in this format, Please judge which type of ["small talk", "academic", "computer technology", "life", "game", "other"] the above conversation is most likely to belong to, and your output should be:
 Answer: your answer
 """  # noqa: E501
 
@@ -62,7 +62,7 @@ class Chat(Plugin):
             classify = self._get_classify(records)
             if classify == "academic":
                 pass
-            elif classify == "computer technology":
+            elif classify in ["computer technology", "game"]:
                 await self._do_chat(group_message, records)
             elif classify == "small talk" and random.random() < 0.5:
                 await self._do_chat(group_message, records)
