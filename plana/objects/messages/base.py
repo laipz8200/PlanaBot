@@ -40,9 +40,6 @@ class BaseMessage(BaseModel):
 
     def at_bot(self) -> bool:
         for msg in self.message:
-            if (
-                msg.get("type", "") == "at"
-                and int(msg["data"]["qq"]) == self.plugin.config.master_id
-            ):
+            if msg.get("type", "") == "at" and int(msg["data"]["qq"]) == self.self_id:
                 return True
         return False
