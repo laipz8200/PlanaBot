@@ -68,8 +68,8 @@ class Chat(Plugin):
 
     async def on_group_prefix(self, group_message: GroupMessage):
         if group_message.plain_text() == "clear history":
-            history_messages = self.history.setdefault(group_message.group_id, [])
-            history_messages.clear()
+            records = self.history.setdefault(group_message.group_id, deque(maxlen=60))
+            records.clear()
             await group_message.reply(
                 f"History records in group {group_message.group_id} have been cleared"
             )
