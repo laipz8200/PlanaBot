@@ -4,7 +4,7 @@ from plana.objects.messages.private_message import PrivateMessage
 
 class WhoAreU(Plugin):
     master_only = True
-    prefix = "!whoareu"
+    prefix = "#whoareu"
 
     async def on_private_prefix(self, private_message: PrivateMessage):
         info = await self.get_login_info()

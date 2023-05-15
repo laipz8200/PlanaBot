@@ -4,11 +4,13 @@ import uuid
 
 from pydantic import BaseModel
 
+from plana.actions.get_group_member_info import create_get_group_member_info_action
 from plana.actions.get_login_info import create_get_login_info_action
 from plana.actions.send_group_msg import create_send_group_msg_action
 from plana.actions.send_private_msg import create_send_private_msg_action
 from plana.core.config import PlanaConfig
 from plana.objects.action import Action
+from plana.objects.get_group_member_info import GroupMemberInfo
 from plana.objects.get_login_info import LoginInfo
 from plana.objects.messages.array_messages import ArrayMessage
 
@@ -67,6 +69,13 @@ class Plugin(BaseModel):
         action = create_get_login_info_action()
         response = await self._send_action_with_response(action)
         return LoginInfo(**response["data"])
+
+    async def get_group_member_info(
+        self, group_id: int, user_id: int
+    ) -> GroupMemberInfo:
+        action = create_get_group_member_info_action(group_id, user_id)
+        response = await self._send_action_with_response(action)
+        return GroupMemberInfo(**response["data"])
 
     async def _send_action_with_response(self, action: Action) -> dict:
         uid = str(uuid.uuid4())
