@@ -3,6 +3,7 @@ from collections import deque
 from datetime import datetime
 
 import openai
+import tiktoken
 from loguru import logger
 
 from plana import GroupMessage, Plugin
@@ -17,7 +18,7 @@ chat_prompt = """Your name is Plana(プラナ), Taken from Planetarium, you are 
 ```
 
 There's some background to your conversation, the current one is:
-no background
+{background}
 
 I will provide you with chat records in this format, Please keep the conversation going.
 """  # noqa: E501
@@ -33,9 +34,25 @@ I will provide you with chat records in this format, Please judge which type of 
 Answer: your answer
 """  # noqa: E501
 
-summary_prompt = """Please shorten the following long text into Chinese with less than 200 words according to the original meaning, and your output should be:
-Summary: your result
+background_prompt = """Here is a chat log, and your conversation uses `[time][nickname]:[content]`, here is an example:
+
+```
+2023-05-01 12:00 Xiaoxue: Can Plana be my wife?
+2023-05-01 12:04 Plana: As an AI, I don't have emotions like a human.
+2023-05-01 12:00 Xiaoxue: How old is Plana this year?
+2023-05-01 12:04 Plana: I'm 12 years old.
+```
+
+I will provide you with chat records in this format, please summarize it into a story background, your output format should be:
+
+Background: your answer
 """  # noqa: E501
+
+encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+
+def calc_tokens(prompt: str) -> int:
+    return len(encoding.encode(prompt))
 
 
 def current_datetime() -> str:
@@ -47,6 +64,7 @@ class Chat(Plugin):
     openai_api_key: str
     prefix = "#chat"
     classify = ["small talk", "academic", "computer technology", "life", "other"]
+    background: str = "no background"
 
     async def on_group_prefix(self, group_message: GroupMessage):
         if group_message.plain_text() == "clear history":
@@ -58,7 +76,8 @@ class Chat(Plugin):
 
     async def on_group(self, group_message: GroupMessage):
         records = self.history.setdefault(group_message.group_id, deque(maxlen=60))
-        await self._record_message(group_message, records)
+        if not await self._record_message(group_message, records):
+            return
 
         if group_message.at_bot() or group_message.contains("Plana", ignore_case=True):
             await self._do_chat(group_message, records)
@@ -76,13 +95,16 @@ class Chat(Plugin):
             elif random.random() < 0.25:
                 await self._do_chat(group_message, records)
 
-    async def _record_message(self, group_message: GroupMessage, records: list[tuple]):
+    async def _record_message(
+        self, group_message: GroupMessage, records: list[tuple]
+    ) -> str:
         dt = current_datetime()
         sender_name = group_message.sender.nickname
         content = await self._parse_messages(group_message)
         if not content:
             return
         records.append((dt, sender_name, content))
+        return content
 
     async def _do_chat(self, group_message: GroupMessage, records: list[tuple]):
         response = self._chat(records)
@@ -119,11 +141,19 @@ class Chat(Plugin):
         return prompts + "\n"
 
     def _chat(self, records: list[tuple]) -> str:
-        user_prompt = (
-            self._create_user_prompts(records) + f"{current_datetime()} Plana:"
-        )
+        dt = current_datetime()
+        system_prompt = chat_prompt.format(background=self.background)
+        user_prompt = self._create_user_prompts(records) + f"{dt} Plana:"
+
+        if calc_tokens(system_prompt) + calc_tokens(user_prompt) > 3072:
+            num = int(len(records) * 0.2) - 1
+            self.background = self._get_summary(list(records)[:num])
+            for _ in range(num):
+                records.popleft()
+            return self._chat(records)
+
         messages = [
-            {"role": "system", "content": chat_prompt},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
         response = openai.ChatCompletion.create(
@@ -135,10 +165,13 @@ class Chat(Plugin):
         )
         return response["choices"][0]["message"]["content"]
 
-    def _get_summary(self, text: str) -> str:
+    def _get_summary(self, records: list[tuple]) -> str:
+        if len(records) == 0:
+            return "no background"
+        user_prompt = self._create_user_prompts(records) + "Background:"
         messages = [
-            {"role": "system", "content": summary_prompt},
-            {"role": "user", "content": text},
+            {"role": "system", "content": background_prompt},
+            {"role": "user", "content": user_prompt},
         ]
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
