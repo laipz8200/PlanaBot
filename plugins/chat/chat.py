@@ -52,7 +52,7 @@ class Chat(Plugin):
             )
 
     async def on_group(self, group_message: GroupMessage):
-        records = self.history.setdefault(group_message.group_id, deque(maxlen=20))
+        records = self.history.setdefault(group_message.group_id, deque(maxlen=60))
         await self._record_message(group_message, records)
 
         if group_message.at_bot() or group_message.contains("Plana", ignore_case=True):
