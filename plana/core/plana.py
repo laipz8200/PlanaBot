@@ -11,7 +11,7 @@ from loguru import logger
 
 from plana.core.config import PlanaConfig
 from plana.core.plugin import Plugin
-from plana.objects.action import Action
+from plana.objects.actions.action import Action
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.group_message import GroupMessage
 from plana.objects.messages.private_message import PrivateMessage
@@ -214,11 +214,12 @@ class Plana:
     def _print_ascii_art(self):
         logger.info("Thanks for using")
         logger.info("     ____  _        _    _   _    _")
-        logger.info("    |  _ \| |      / \  | \ | |  / \\")
-        logger.info("    | |_) | |     / _ \ |  \| | / _ \\")
-        logger.info("    |  __/| |___ / ___ \| |\  |/ ___ \\")
-        logger.info("    |_|   |_____/_/   \_\_| \_/_/   \_\\    - " + self.__version__)
+        logger.info("    |  _ \\| |      / \\  | \\ | |  / \\")
+        logger.info("    | |_) | |     / _ \\ |  \\| | / _ \\")
+        logger.info("    |  __/| |___ / ___ \\| |\\  |/ ___ \\")
+        logger.info("    |_|   |_____/_/   \\_\\_| \\_/_/   \\_\\")
         logger.info("")
+        logger.info("                                  - version: " + self.__version__)
 
     def _load_config(self, config: PlanaConfig | None, config_file_path: str):
         if not config:

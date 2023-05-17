@@ -1,8 +1,6 @@
+from plana.objects.actions.send_private_msg import (SendPrivateMessageAction,
+                                                    SendPrivateMessageParams)
 from plana.objects.messages.array_messages import ArrayMessage
-from plana.objects.send_private_msg import (
-    SendPrivateMessageAction,
-    SendPrivateMessageParams,
-)
 
 
 def create_send_private_msg_action(
@@ -10,7 +8,7 @@ def create_send_private_msg_action(
     message: ArrayMessage | str,
     *args,
     **kwargs,
-) -> None:
+) -> SendPrivateMessageAction:
     if isinstance(message, str):
         text = message
         message = ArrayMessage()
@@ -18,6 +16,6 @@ def create_send_private_msg_action(
     action = SendPrivateMessageAction(
         params=SendPrivateMessageParams(
             user_id=user_id, message=message, *args, **kwargs
-        )
+        ).dict()
     )
     return action

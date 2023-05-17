@@ -1,10 +1,11 @@
+from plana.objects.actions.send_group_msg import (SendGroupMessageAction,
+                                                  SendGroupMessageParams)
 from plana.objects.messages.array_messages import ArrayMessage
-from plana.objects.send_group_msg import SendGroupMessageAction, SendGroupMessageParams
 
 
 def create_send_group_msg_action(
     group_id: int, message: ArrayMessage | str, *args, **kwargs
-) -> None:
+) -> SendGroupMessageAction:
     if isinstance(message, str):
         text = message
         message = ArrayMessage()
@@ -12,6 +13,6 @@ def create_send_group_msg_action(
     action = SendGroupMessageAction(
         params=SendGroupMessageParams(
             group_id=group_id, message=message, *args, **kwargs
-        )
+        ).dict()
     )
     return action

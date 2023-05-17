@@ -1,7 +1,7 @@
 from plana.objects.messages.array_messages import ArrayMessage
 from plana.objects.messages.base import BaseMessage
 from plana.objects.messages.reply import create_reply
-from plana.objects.sender import Anonymous
+from plana.objects.messages.sender import Anonymous
 
 
 class GroupMessage(BaseMessage):

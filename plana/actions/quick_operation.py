@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 
-from plana.objects.action import Action
+from plana.objects.actions.action import Action
 
 
 class QuickOperationAction(Action):
-    action = ".handle_quick_operation"
+    action: str = ".handle_quick_operation"
 
 
 class QuickOperationParams(BaseModel):
@@ -16,5 +16,5 @@ def create_quick_operation_action(
     context: dict, operation: dict
 ) -> QuickOperationAction:
     return QuickOperationAction(
-        params=QuickOperationParams(context=context, operation=operation)
+        params=QuickOperationParams(context=context, operation=operation).dict()
     )

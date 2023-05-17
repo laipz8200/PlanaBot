@@ -4,7 +4,7 @@ from pydantic import BaseModel, validator
 
 from plana.core.plugin import Plugin
 from plana.objects.messages.array_messages import ArrayMessage
-from plana.objects.sender import Sender
+from plana.objects.messages.sender import Sender
 
 
 class BaseMessage(BaseModel):

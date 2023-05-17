@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 
-from plana.objects.action import Action
+from plana.objects.actions.action import Action
 
 
 class GetLoginInfo(Action):
-    action = "get_login_info"
+    action: str = "get_login_info"
 
 
 class LoginInfo(BaseModel):

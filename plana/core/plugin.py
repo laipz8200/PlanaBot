@@ -4,14 +4,15 @@ import uuid
 
 from pydantic import BaseModel
 
-from plana.actions.get_group_member_info import create_get_group_member_info_action
+from plana.actions.get_group_member_info import \
+    create_get_group_member_info_action
 from plana.actions.get_login_info import create_get_login_info_action
 from plana.actions.send_group_msg import create_send_group_msg_action
 from plana.actions.send_private_msg import create_send_private_msg_action
 from plana.core.config import PlanaConfig
-from plana.objects.action import Action
-from plana.objects.get_group_member_info import GroupMemberInfo
-from plana.objects.get_login_info import LoginInfo
+from plana.objects.actions.action import Action
+from plana.objects.actions.get_group_member_info import GroupMemberInfo
+from plana.objects.actions.get_login_info import LoginInfo
 from plana.objects.messages.array_messages import ArrayMessage
 
 if typing.TYPE_CHECKING:
@@ -47,8 +48,9 @@ class Plugin(BaseModel):
 
     async def handle_on_group_prefix(self, group_message: "GroupMessage"):
         group_message.load_plugin(self)
-        new_message = group_message.remove_prefix(self.prefix)
-        return await self.on_group_prefix(new_message)
+        if self.prefix:
+            new_message = group_message.remove_prefix(self.prefix)
+            return await self.on_group_prefix(new_message)
 
     async def handle_on_private(self, private_message: "PrivateMessage"):
         private_message.load_plugin(self)
@@ -56,8 +58,9 @@ class Plugin(BaseModel):
 
     async def handle_on_private_prefix(self, private_message: "PrivateMessage"):
         private_message.load_plugin(self)
-        new_message = private_message.remove_prefix(self.prefix)
-        return await self.on_private_prefix(new_message)
+        if self.prefix:
+            new_message = private_message.remove_prefix(self.prefix)
+            return await self.on_private_prefix(new_message)
 
     async def send_group_message(self, group_id: int, message: ArrayMessage | str):
         await self.queue.put(create_send_group_msg_action(group_id, message))
@@ -76,6 +79,9 @@ class Plugin(BaseModel):
         action = create_get_group_member_info_action(group_id, user_id)
         response = await self._send_action_with_response(action)
         return GroupMemberInfo(**response["data"])
+
+    async def get_group_msg_history(self) -> list["GroupMessage"]:
+        return []
 
     async def _send_action_with_response(self, action: Action) -> dict:
         uid = str(uuid.uuid4())

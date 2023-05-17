@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 
-from plana.objects.action import Action
+from plana.objects.actions.action import Action
 
 
 class GetGroupMemberInfoAction(Action):
-    action = "get_group_member_info"
+    action: str = "get_group_member_info"
 
 
 class GetGroupMemberInfoParams(BaseModel):

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from plana.objects.action import Action
+from plana.objects.actions.action import Action
 from plana.objects.messages.array_messages import ArrayMessage
 
 
