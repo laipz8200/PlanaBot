@@ -4,16 +4,11 @@ import uuid
 
 from pydantic import BaseModel
 
-from plana.actions import (
-    Action,
-    GetLoginInfo,
-    GroupMemberInfo,
-    LoginInfo,
-    create_get_group_member_info_action,
-    create_send_group_msg_action,
-    create_send_private_msg_action,
-)
+from plana.actions import Action, GetLoginInfo, GroupMemberInfo, LoginInfo
+from plana.actions.get_group_member_info import GetGroupMemberInfo
 from plana.actions.get_group_msg_history import GetGroupMsgHistory
+from plana.actions.send_group_msg import SendGroupMessage
+from plana.actions.send_private_msg import SendPrivateMessage
 from plana.core.config import PlanaConfig
 
 if typing.TYPE_CHECKING:
@@ -64,10 +59,12 @@ class Plugin(BaseModel):
             return await self.on_private_prefix(new_message)
 
     async def send_group_message(self, group_id: int, message: "Message | str"):
-        await self.queue.put(create_send_group_msg_action(group_id, message))
+        action = SendGroupMessage(params={"group_id": group_id, "message": message})
+        await self.queue.put(action)
 
     async def send_private_message(self, user_id: int, message: "Message | str"):
-        await self.queue.put(create_send_private_msg_action(user_id, message))
+        action = SendPrivateMessage(params={"user_id": user_id, "message": message})
+        await self.queue.put(action)
 
     async def get_login_info(self) -> LoginInfo:
         action = GetLoginInfo()
@@ -77,12 +74,12 @@ class Plugin(BaseModel):
     async def get_group_member_info(
         self, group_id: int, user_id: int
     ) -> GroupMemberInfo:
-        action = create_get_group_member_info_action(group_id, user_id)
+        action = GetGroupMemberInfo(params={"group_id": group_id, "user_id": user_id})
         response = await self._send_action_with_response(action)
         return GroupMemberInfo(**response["data"])
 
-    async def get_group_msg_history(self) -> list["GroupMessage"]:
-        action = GetGroupMsgHistory()
+    async def get_group_msg_history(self, group_id: int) -> list["GroupMessage"]:
+        action = GetGroupMsgHistory(params={"group_id": group_id})
         response = await self._send_action_with_response(action)
         return [GroupMessage(**msg) for msg in response["data"]]
 
