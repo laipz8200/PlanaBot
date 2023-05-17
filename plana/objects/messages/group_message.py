@@ -19,6 +19,8 @@ class GroupMessage(BaseMessage):
         return str(self)
 
     async def reply(self, message: ArrayMessage | str):
+        if not self.plugin:
+            raise Exception("Plugin not loaded")
         if isinstance(message, str):
             text = message
             message = ArrayMessage()

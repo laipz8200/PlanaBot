@@ -40,7 +40,7 @@ class Chat(Plugin):
         if group_message.group_id in self.disable_in_groups:
             return
 
-        if group_message.starts_with(self.prefix):
+        if group_message.on_prefix(self.prefix):
             return
 
         records = self.history.setdefault(group_message.group_id, deque(maxlen=10))

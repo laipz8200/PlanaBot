@@ -97,7 +97,7 @@ class Plana:
         tasks = [plugin.handle_on_private(private_message) for plugin in plugins]
 
         plugins = filter(
-            lambda plugin: plugin.prefix and private_message.starts_with(plugin.prefix),
+            lambda plugin: plugin.prefix and private_message.on_prefix(plugin.prefix),
             plugins,
         )
         tasks += [
@@ -124,7 +124,7 @@ class Plana:
         tasks = [plugin.handle_on_group(group_message) for plugin in plugins]
 
         plugins = filter(
-            lambda plugin: plugin.prefix and group_message.starts_with(plugin.prefix),
+            lambda plugin: plugin.prefix and group_message.on_prefix(plugin.prefix),
             plugins,
         )
         tasks += [plugin.handle_on_group_prefix(group_message) for plugin in plugins]

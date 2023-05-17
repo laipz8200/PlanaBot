@@ -24,14 +24,14 @@ class BaseMessage(BaseModel):
     def validate_message(cls, message: str) -> ArrayMessage:
         return ArrayMessage(message)
 
-    def load_plugin(self, plugin: Plugin):
+    def load_plugin(self, plugin: Plugin) -> None:
         self.plugin = plugin
 
     def plain_text(self) -> str:
         return self.message.plain_text()
 
-    def starts_with(self, text: str) -> bool:
-        return self.message.starts_with(text)
+    def on_prefix(self, prefix: str) -> bool:
+        return self.message.on_prefix(prefix)
 
     def remove_prefix(self, prefix: str) -> Self:
         obj = self.copy()
