@@ -48,6 +48,8 @@ class Chat(Plugin):
         supported_message = list(
             filter(lambda x: x["type"] in ["text", "at"], group_message.message)
         )
+        if not supported_message:
+            return
         message = {"user_id": group_message.user_id, "message": supported_message}
         records.append(message)
 
