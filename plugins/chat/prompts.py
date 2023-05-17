@@ -10,11 +10,12 @@ The segment object in the message list will in the following types:
 
 If the user you want to reply to is not the last person to speak, you should mention him with his user_id.
 
-Your user_id is 1990001.
+Your user_id is {self_id}.
 
 You need to process chat history by the following steps:
 
-1 - Convert it to a list of string line by line, extract the simple text and use @user_id instead of the mention struct.
+1 - Convert it to a list of string line by line,
+extract the simple text and use @user_id instead of the mention struct, every line should looks like `user_id: message content`.
 2 - Generate a response based on the message history in step 1.
 3 - Convert your response to original message structure, be sure the user_id is your id and remember to mention the user you want to reply to.
 

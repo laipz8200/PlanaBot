@@ -18,7 +18,7 @@ def get_completion(
             {"role": "user", "content": prompt},
         ],
         temperature=temperature,
-        max_tokens=1024,
+        max_tokens=512,
         top_p=0,
         frequency_penalty=1,
         presence_penalty=0,
