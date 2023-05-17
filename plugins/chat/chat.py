@@ -20,6 +20,7 @@ class Chat(Plugin):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         set_api_key(self.openai_api_key)
+        self.enabled_groups = set(self.config.allowed_groups)
 
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
