@@ -58,7 +58,7 @@ class Chat(Plugin):
         logger.debug(f"{response=}")
 
         try:
-            groups = re.findall(r"```(.*)```", response)
+            groups = re.findall(r"`(.*)`", response)
             response_json = json.loads(groups[-1])
             logger.debug(f"{response_json=}")
             reply = ArrayMessage(response_json["message"])
