@@ -51,7 +51,8 @@ class Chat(Plugin):
         records.append(message)
 
         response = get_completion(
-            chat_with_format.format(self_id=group_message.self_id), records
+            chat_with_format.format(self_id=group_message.self_id),
+            prompt=json.dumps(list(records)),
         )
 
         try:
