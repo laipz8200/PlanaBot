@@ -22,7 +22,7 @@ class MikanAnime(Plugin):
         super().__init__(*args, **kwargs)
 
         scheduler = AsyncIOScheduler()
-        scheduler.add_job(self.check_update, "cron", hour="0-2,18-23")
+        scheduler.add_job(self.check_update, "interval", seconds=30)
         scheduler.start()
 
     async def check_update(self) -> None:
