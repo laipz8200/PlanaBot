@@ -23,7 +23,9 @@ class Chat(Plugin):
             for message in group_messages
         ]
         prompt = chat_prompt.format(history_list="\n".join(history_list))
+        logger.debug(f"[Chat] {prompt=}")
         response = await get_completion(prompt)
+        logger.debug(f"[Chat] {response=}")
         try:
             response_json = json.loads(response)
             user_id = response_json["mention_user_id"]
