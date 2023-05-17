@@ -19,8 +19,8 @@ def get_completion(
         temperature=temperature,
         max_tokens=1024,
         top_p=0,
-        frequency_penalty=1,
-        presence_penalty=0,
+        frequency_penalty=0.5,
+        presence_penalty=0.1,
     )
     return response["choices"][0]["message"]["content"]
 
