@@ -1,4 +1,5 @@
 import json
+import re
 from collections import deque
 
 from loguru import logger
@@ -14,7 +15,7 @@ class Chat(Plugin):
     prefix: str = "#chat"
     history: dict[int, deque] = {}
     openai_api_key: str = ""
-    disable_in_groups: set[int] = set()
+    enabled_groups: set[int] = set()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -23,27 +24,27 @@ class Chat(Plugin):
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
         if command == "reset":
-            self.history[group_message.group_id] = deque(maxlen=10)
+            self.history[group_message.group_id] = deque(maxlen=3)
             await group_message.reply(
-                f"History records in group {group_message.group_id} have been reset"
+                f"History in group {group_message.group_id} have been reset"
             )
         elif command == "disable":
-            self.disable_in_groups.add(group_message.group_id)
+            self.enabled_groups.remove(group_message.group_id)
             await group_message.reply(f"Disabled in group {group_message.group_id}")
         elif command == "enable":
-            self.disable_in_groups.remove(group_message.group_id)
+            self.enabled_groups.add(group_message.group_id)
             await group_message.reply(f"Enabled in group {group_message.group_id}")
         else:
             await group_message.reply("Unknown command")
 
     async def on_group(self, group_message: GroupMessage) -> None:
-        if group_message.group_id in self.disable_in_groups:
+        if group_message.group_id not in self.enabled_groups:
             return
 
         if group_message.on_prefix(self.prefix):
             return
 
-        records = self.history.setdefault(group_message.group_id, deque(maxlen=10))
+        records = self.history.setdefault(group_message.group_id, deque(maxlen=3))
         supported_message = list(
             filter(lambda x: x["type"] in ["text", "at"], group_message.message)
         )
@@ -52,15 +53,13 @@ class Chat(Plugin):
 
         response = get_completion(
             chat_with_format.format(self_id=group_message.self_id),
-            prompt=json.dumps(list(records)),
+            prompt=json.dumps(list(records), ensure_ascii=False),
         )
 
         try:
-            response_json = json.loads(response)
-            reply = ArrayMessage()
-            reply.add_text(f"Context:\n{list(records)}\n")
-            reply.add_text("Response:\n")
-            reply += response_json
+            groups = re.findall(r"```(.*)```", response)
+            response_json = json.loads(groups[-1])
+            reply = ArrayMessage(response_json)
             message = {"user_id": group_message.self_id, "message": response_json}
             records.append(message)
             await self.send_group_message(group_message.group_id, reply)
