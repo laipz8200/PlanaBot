@@ -57,5 +57,5 @@ class MikanAnime(Plugin):
                 self.send_group_message(gid, message)
                 for gid in self.config.allowed_groups
             ]
-        )
+        ) if self.previous_records else None
         self.previous_records = [i.title for i in anime_items]
