@@ -9,12 +9,11 @@ def set_api_key(api_key) -> None:
 
 
 def get_completion(
-    system: str, prompt: str, model: str = "gpt-3.5-turbo", temperature: float = 0
+    prompt: str, model: str = "gpt-3.5-turbo", temperature: float = 0
 ) -> str:
     response: Any = openai.ChatCompletion.create(
         model=model,
         messages=[
-            {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
         temperature=temperature,

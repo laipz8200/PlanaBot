@@ -55,8 +55,9 @@ class Chat(Plugin):
         records.append(message)
 
         response = get_completion(
-            chat_with_format.format(self_id=group_message.self_id),
-            prompt="History:" + json.dumps(list(records), ensure_ascii=False),
+            chat_with_format.format(self_id=group_message.self_id)
+            + "\nHistory:"
+            + json.dumps(list(records), ensure_ascii=False),
         )
         logger.debug(f"{response=}")
 
