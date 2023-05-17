@@ -4,10 +4,15 @@ import uuid
 
 from pydantic import BaseModel
 
-from plana.actions import (Action, GetLoginInfo, GroupMemberInfo, LoginInfo,
-                           create_get_group_member_info_action,
-                           create_send_group_msg_action,
-                           create_send_private_msg_action)
+from plana.actions import (
+    Action,
+    GetLoginInfo,
+    GroupMemberInfo,
+    LoginInfo,
+    create_get_group_member_info_action,
+    create_send_group_msg_action,
+    create_send_private_msg_action,
+)
 from plana.core.config import PlanaConfig
 
 if typing.TYPE_CHECKING:
