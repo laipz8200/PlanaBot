@@ -14,21 +14,35 @@ class Chat(Plugin):
     prefix: str = "#chat"
     history: dict[int, deque] = {}
     openai_api_key: str
+    disable_in_groups: set[int]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         set_api_key(self.openai_api_key)
 
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
-        if group_message.plain_text() == "clear history":
+        command = group_message.plain_text()
+        if command == "reset":
             self.history[group_message.group_id] = deque(maxlen=10)
             await group_message.reply(
-                f"History records in group {group_message.group_id} have been cleared"
+                f"History records in group {group_message.group_id} have been reset"
             )
+        elif command == "disable":
+            self.disable_in_groups.add(group_message.group_id)
+            await group_message.reply(f"Disabled in group {group_message.group_id}")
+        elif command == "enable":
+            self.disable_in_groups.remove(group_message.group_id)
+            await group_message.reply(f"Enabled in group {group_message.group_id}")
+        else:
+            await group_message.reply("Unknown command")
 
     async def on_group(self, group_message: GroupMessage) -> None:
+        if group_message.group_id in self.disable_in_groups:
+            return
+
         if group_message.starts_with(self.prefix):
             return
+
         records = self.history.setdefault(group_message.group_id, deque(maxlen=10))
         supported_message = list(
             filter(lambda x: x["type"] in ["text", "at"], group_message.message)
