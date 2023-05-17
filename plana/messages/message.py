@@ -11,6 +11,9 @@ class Message(list):
     def add_text(self, text: str) -> None:
         self.append({"type": "text", "data": {"text": text}})
 
+    def add_at(self, user_id: int) -> None:
+        self.append({"type": "at", "data": {"qq": user_id}})
+
     def on_prefix(self, prefix: str) -> bool:
         if (
             len(self) > 0
