@@ -53,7 +53,7 @@ class Chat(Plugin):
 
         response = get_completion(
             chat_with_format.format(self_id=group_message.self_id),
-            prompt=json.dumps(list(records), ensure_ascii=False),
+            prompt="History:" + json.dumps(list(records), ensure_ascii=False),
         )
         logger.debug(f"{response=}")
 
@@ -61,7 +61,7 @@ class Chat(Plugin):
             groups = re.findall(r"```(.*)```", response)
             response_json = json.loads(groups[-1])
             logger.debug(f"{response_json=}")
-            reply = ArrayMessage(response_json)
+            reply = ArrayMessage(response_json["message"])
             message = {"user_id": group_message.self_id, "message": response_json}
             records.append(message)
             await self.send_group_message(group_message.group_id, reply)
