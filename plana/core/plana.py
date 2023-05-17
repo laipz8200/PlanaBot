@@ -130,7 +130,7 @@ class Plana:
         tasks += [plugin.handle_on_group_prefix(group_message) for plugin in plugins]
         asyncio.gather(*tasks)
 
-    def _init_plugins(self) -> list[Plugin]:
+    def _init_plugins(self) -> None:
         enabled_plugins = list(map(lambda x: x.lower(), self.config.enabled_plugins))
         plugins_dir = self.config.plugins_dir
         for filename in os.listdir(plugins_dir):
@@ -139,8 +139,13 @@ class Plana:
                 spec = importlib.util.spec_from_file_location(
                     module_name, os.path.join(plugins_dir, filename)
                 )
+                if not spec:
+                    continue
                 module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                loader = spec.loader
+                if not loader:
+                    continue
+                loader.exec_module(module)
             elif os.path.isdir(os.path.join(plugins_dir, filename)):
                 module_name = f"{plugins_dir}.{filename}"
                 module = importlib.import_module(module_name)
@@ -171,7 +176,10 @@ class Plana:
 
     async def _ws_endpoint(self, websocket: WebSocket):
         await websocket.accept()
-        client_name = f"{websocket.client.host}:{websocket.client.port}"
+        client = websocket.client
+        if not client:
+            return await websocket.close()
+        client_name = f"{client.host}:{client.port}"
         queue = asyncio.Queue()
         self.subscribers[client_name] = queue
         logger.info(f"Client {client_name} connected")
@@ -213,8 +221,7 @@ class Plana:
         logger.info("")
 
     def _load_config(self, config: PlanaConfig | None, config_file_path: str):
-        self.config = config
-        if not self.config:
+        if not config:
             self.config = PlanaConfig()
 
         if os.path.exists(config_file_path):

@@ -13,8 +13,8 @@ from .prompts import chat_with_format
 class Chat(Plugin):
     prefix: str = "#chat"
     history: dict[int, deque] = {}
-    openai_api_key: str
-    disable_in_groups: set[int]
+    openai_api_key: str = ""
+    disable_in_groups: set[int] = set()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
