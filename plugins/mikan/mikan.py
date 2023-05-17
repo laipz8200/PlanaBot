@@ -35,23 +35,20 @@ class MikanAnime(Plugin):
                 return
 
         rss: ET.Element = ET.fromstring(response.text)
-        rss_items = filter(
-            lambda item: item.find("title") and item.find("link"),
-            rss.findall("./channel/item"),
-        )
+        rss_items = rss.findall("./channel/item")
 
         anime_items: list[AnimeItem] = [
             AnimeItem(title=i.find("title").text, link=i.find("link").text)  # type: ignore  # noqa: E501
             for i in rss_items
         ]
 
-        if not anime_items:
+        new_anime_items = [
+            i for i in anime_items if i.title not in self.previous_records
+        ]
+        if not new_anime_items:
             return
 
-        message_list: list[str] = [
-            f"{i.title}\n{i.link}"
-            for i in filter(lambda i: i.title not in self.previous_records, anime_items)
-        ]
+        message_list: list[str] = [f"{i.title}\n{i.link}" for i in new_anime_items]
         message_list.insert(0, "老师, 你订阅的番剧更新了:")
         message: str = "\n".join(message_list)
 
