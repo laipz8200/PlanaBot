@@ -13,6 +13,7 @@ from plana.actions import (
     create_send_group_msg_action,
     create_send_private_msg_action,
 )
+from plana.actions.get_group_msg_history import GetGroupMsgHistory
 from plana.core.config import PlanaConfig
 
 if typing.TYPE_CHECKING:
@@ -81,7 +82,9 @@ class Plugin(BaseModel):
         return GroupMemberInfo(**response["data"])
 
     async def get_group_msg_history(self) -> list["GroupMessage"]:
-        return []
+        action = GetGroupMsgHistory()
+        response = await self._send_action_with_response(action)
+        return [GroupMessage(**msg) for msg in response["data"]]
 
     async def _send_action_with_response(self, action: Action) -> dict:
         uid = str(uuid.uuid4())
