@@ -54,6 +54,14 @@ class Chat(Plugin):
         )
         if not supported_message:
             return
+
+        bot_reply_count = len(
+            list(filter(lambda x: x["user_id"] == group_message.self_id, list(records)))
+        )
+        if bot_reply_count > self.history_max_length // 3:
+            logger.debug("Bot replied too many times, skip this message.")
+            return
+
         message = {"user_id": group_message.user_id, "message": supported_message}
         records.append(message)
 
