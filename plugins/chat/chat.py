@@ -16,6 +16,7 @@ class Chat(Plugin):
     history: dict[int, deque] = {}
     openai_api_key: str = ""
     enabled_groups: set[int] = set()
+    history_max_length: int = 10
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -25,7 +26,7 @@ class Chat(Plugin):
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
         if command == "reset":
-            self.history[group_message.group_id] = deque(maxlen=3)
+            self.history[group_message.group_id] = deque(maxlen=self.history_max_length)
             await group_message.reply(
                 f"History in group {group_message.group_id} have been reset"
             )
@@ -45,7 +46,9 @@ class Chat(Plugin):
         if group_message.on_prefix(self.prefix):
             return
 
-        records = self.history.setdefault(group_message.group_id, deque(maxlen=3))
+        records = self.history.setdefault(
+            group_message.group_id, deque(maxlen=self.history_max_length)
+        )
         supported_message = list(
             filter(lambda x: x["type"] in ["text", "at"], group_message.message)
         )
