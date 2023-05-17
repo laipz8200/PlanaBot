@@ -57,7 +57,14 @@ class Chat(Plugin):
 
         try:
             response_json = json.loads(response)
+            reply = ArrayMessage()
+            reply.add_text(f"Context:\n{list(records)}\n")
+            reply.add_text("Response:\n")
+            reply += response_json
             message = {"user_id": group_message.self_id, "message": response_json}
-            await group_message.reply(ArrayMessage(response_json))
+            records.append(message)
+            await self.send_group_message(group_message.group_id, reply)
         except Exception as e:
-            logger.error(f"Failed to parse response: {e}, response: {response}")
+            error_msg = f"Failed to parse response: {e}, response: {response}"
+            logger.error(error_msg)
+            await self.send_group_message(group_message.group_id, error_msg)
