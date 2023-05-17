@@ -1,5 +1,5 @@
-from plana.core.plugin import Plugin
-from plana.messages.private_message import PrivateMessage
+from plana import Plugin
+from plana.messages import PrivateMessage
 
 
 class WhoAreU(Plugin):

@@ -1,5 +1,4 @@
 import asyncio
-import typing
 import uuid
 
 from pydantic import BaseModel
@@ -10,9 +9,7 @@ from plana.actions.get_group_msg_history import GetGroupMsgHistory
 from plana.actions.send_group_msg import SendGroupMessage
 from plana.actions.send_private_msg import SendPrivateMessage
 from plana.core.config import PlanaConfig
-
-if typing.TYPE_CHECKING:
-    from plana.messages import GroupMessage, Message, PrivateMessage
+from plana.messages import GroupMessage, Message, PrivateMessage
 
 
 class Plugin(BaseModel):
@@ -26,43 +23,43 @@ class Plugin(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    async def on_group(self, group_message: "GroupMessage"):
+    async def on_group(self, group_message: GroupMessage):
         pass
 
-    async def on_group_prefix(self, group_message: "GroupMessage"):
+    async def on_group_prefix(self, group_message: GroupMessage):
         pass
 
-    async def on_private(self, private_message: "PrivateMessage"):
+    async def on_private(self, private_message: PrivateMessage):
         pass
 
-    async def on_private_prefix(self, private_message: "PrivateMessage"):
+    async def on_private_prefix(self, private_message: PrivateMessage):
         pass
 
-    async def handle_on_group(self, group_message: "GroupMessage"):
+    async def handle_on_group(self, group_message: GroupMessage):
         group_message.load_plugin(self)
         return await self.on_group(group_message)
 
-    async def handle_on_group_prefix(self, group_message: "GroupMessage"):
+    async def handle_on_group_prefix(self, group_message: GroupMessage):
         group_message.load_plugin(self)
         if self.prefix:
             new_message = group_message.remove_prefix(self.prefix)
             return await self.on_group_prefix(new_message)
 
-    async def handle_on_private(self, private_message: "PrivateMessage"):
+    async def handle_on_private(self, private_message: PrivateMessage):
         private_message.load_plugin(self)
         return await self.on_private(private_message)
 
-    async def handle_on_private_prefix(self, private_message: "PrivateMessage"):
+    async def handle_on_private_prefix(self, private_message: PrivateMessage):
         private_message.load_plugin(self)
         if self.prefix:
             new_message = private_message.remove_prefix(self.prefix)
             return await self.on_private_prefix(new_message)
 
-    async def send_group_message(self, group_id: int, message: "Message | str"):
+    async def send_group_message(self, group_id: int, message: Message | str):
         action = SendGroupMessage(params={"group_id": group_id, "message": message})
         await self.queue.put(action)
 
-    async def send_private_message(self, user_id: int, message: "Message | str"):
+    async def send_private_message(self, user_id: int, message: Message | str):
         action = SendPrivateMessage(params={"user_id": user_id, "message": message})
         await self.queue.put(action)
 
@@ -78,7 +75,7 @@ class Plugin(BaseModel):
         response = await self._send_action_with_response(action)
         return GroupMemberInfo(**response["data"])
 
-    async def get_group_msg_history(self, group_id: int) -> list["GroupMessage"]:
+    async def get_group_msg_history(self, group_id: int) -> list[GroupMessage]:
         action = GetGroupMsgHistory(params={"group_id": group_id})
         response = await self._send_action_with_response(action)
         return [GroupMessage(**msg) for msg in response["data"]]
