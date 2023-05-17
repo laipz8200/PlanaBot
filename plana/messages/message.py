@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Self
 
 
-class ArrayMessage(list):
+class Message(list):
     def plain_text(self) -> str:
         return ", ".join(
             [m["data"]["text"] for m in filter(lambda m: m["type"] == "text", self)]

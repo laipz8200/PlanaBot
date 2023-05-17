@@ -1,10 +1,12 @@
-from typing import Self
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, validator
 
-from plana.core.plugin import Plugin
-from plana.objects.messages.array_messages import ArrayMessage
-from plana.objects.messages.sender import Sender
+from plana.messages.message import Message
+from plana.messages.sender import Sender
+
+if TYPE_CHECKING:
+    from plana import Plugin
 
 
 class BaseMessage(BaseModel):
@@ -12,19 +14,19 @@ class BaseMessage(BaseModel):
     sub_type: str
     message_id: int
     user_id: int
-    message: ArrayMessage
+    message: Message
     raw_message: str
     font: int
     sender: Sender
     time: int
     self_id: int
-    plugin: Plugin | None = None
+    plugin: Any = None
 
     @validator("message")
-    def validate_message(cls, message: str) -> ArrayMessage:
-        return ArrayMessage(message)
+    def validate_message(cls, message: str) -> Message:
+        return Message(message)
 
-    def load_plugin(self, plugin: Plugin) -> None:
+    def load_plugin(self, plugin: "Plugin") -> None:
         self.plugin = plugin
 
     def plain_text(self) -> str:

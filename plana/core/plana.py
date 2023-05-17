@@ -9,12 +9,10 @@ import yaml
 from fastapi import FastAPI, WebSocket
 from loguru import logger
 
+from plana.actions import Action
 from plana.core.config import PlanaConfig
 from plana.core.plugin import Plugin
-from plana.objects.actions.action import Action
-from plana.objects.messages.base import BaseMessage
-from plana.objects.messages.group_message import GroupMessage
-from plana.objects.messages.private_message import PrivateMessage
+from plana.messages import BaseMessage, GroupMessage, PrivateMessage
 
 
 class Plana:

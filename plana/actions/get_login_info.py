@@ -1,5 +1,12 @@
-from plana.objects.actions.get_login_info import GetLoginInfo
+from pydantic import BaseModel
+
+from plana.actions.action import Action
 
 
-def create_get_login_info_action() -> GetLoginInfo:
-    return GetLoginInfo()
+class GetLoginInfo(Action):
+    action: str = "get_login_info"
+
+
+class LoginInfo(BaseModel):
+    nickname: str
+    user_id: int

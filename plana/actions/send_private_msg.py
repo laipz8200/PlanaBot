@@ -1,17 +1,29 @@
-from plana.objects.actions.send_private_msg import (SendPrivateMessageAction,
-                                                    SendPrivateMessageParams)
-from plana.objects.messages.array_messages import ArrayMessage
+from pydantic import BaseModel
+
+from plana.actions.action import Action
+from plana.messages import Message
+
+
+class SendPrivateMessageAction(Action):
+    action: str = "send_private_msg"
+
+
+class SendPrivateMessageParams(BaseModel):
+    user_id: int
+    group_id: int | None
+    message: Message
+    auto_escape: bool = False
 
 
 def create_send_private_msg_action(
     user_id: int,
-    message: ArrayMessage | str,
+    message: Message | str,
     *args,
     **kwargs,
 ) -> SendPrivateMessageAction:
     if isinstance(message, str):
         text = message
-        message = ArrayMessage()
+        message = Message()
         message.add_text(text)
     action = SendPrivateMessageAction(
         params=SendPrivateMessageParams(

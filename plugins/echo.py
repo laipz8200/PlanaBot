@@ -1,6 +1,6 @@
 from plana import Plugin
-from plana.objects.messages.group_message import GroupMessage
-from plana.objects.messages.private_message import PrivateMessage
+from plana.messages.group_message import GroupMessage
+from plana.messages.private_message import PrivateMessage
 
 
 class Echo(Plugin):

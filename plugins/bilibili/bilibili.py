@@ -6,8 +6,8 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import httpx
 
 from plana import Plugin
-from plana.objects.messages.group_message import GroupMessage
-from plana.objects.messages.private_message import PrivateMessage
+from plana.messages.group_message import GroupMessage
+from plana.messages.private_message import PrivateMessage
 
 
 class Bilibili(Plugin):

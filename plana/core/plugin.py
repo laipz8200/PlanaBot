@@ -4,19 +4,14 @@ import uuid
 
 from pydantic import BaseModel
 
-from plana.actions.get_group_member_info import \
-    create_get_group_member_info_action
-from plana.actions.get_login_info import create_get_login_info_action
-from plana.actions.send_group_msg import create_send_group_msg_action
-from plana.actions.send_private_msg import create_send_private_msg_action
+from plana.actions import (Action, GetLoginInfo, GroupMemberInfo, LoginInfo,
+                           create_get_group_member_info_action,
+                           create_send_group_msg_action,
+                           create_send_private_msg_action)
 from plana.core.config import PlanaConfig
-from plana.objects.actions.action import Action
-from plana.objects.actions.get_group_member_info import GroupMemberInfo
-from plana.objects.actions.get_login_info import LoginInfo
-from plana.objects.messages.array_messages import ArrayMessage
 
 if typing.TYPE_CHECKING:
-    from plana import GroupMessage, PrivateMessage
+    from plana.messages import GroupMessage, Message, PrivateMessage
 
 
 class Plugin(BaseModel):
@@ -62,14 +57,14 @@ class Plugin(BaseModel):
             new_message = private_message.remove_prefix(self.prefix)
             return await self.on_private_prefix(new_message)
 
-    async def send_group_message(self, group_id: int, message: ArrayMessage | str):
+    async def send_group_message(self, group_id: int, message: "Message | str"):
         await self.queue.put(create_send_group_msg_action(group_id, message))
 
-    async def send_private_message(self, user_id: int, message: ArrayMessage | str):
+    async def send_private_message(self, user_id: int, message: "Message | str"):
         await self.queue.put(create_send_private_msg_action(user_id, message))
 
     async def get_login_info(self) -> LoginInfo:
-        action = create_get_login_info_action()
+        action = GetLoginInfo()
         response = await self._send_action_with_response(action)
         return LoginInfo(**response["data"])
 

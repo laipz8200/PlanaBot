@@ -1,4 +1,4 @@
-from plana.objects.messages.base import ArrayMessage, BaseMessage
+from plana.messages.base_message import BaseMessage, Message
 
 
 class PrivateMessage(BaseMessage):
@@ -15,9 +15,11 @@ class PrivateMessage(BaseMessage):
     def __repr__(self) -> str:
         return str(self)
 
-    async def reply(self, message: ArrayMessage | str):
+    async def reply(self, message: Message | str):
         if isinstance(message, str):
             text = message
-            message = ArrayMessage()
+            message = Message()
             message.add_text(text)
-        await self.plugin.send_private_message(self.sender.user_id, message)
+        if not self.plugin:
+            raise Exception("Plugin not loaded")
+        await self.plugin.send_private_message(self.user_id, message)
