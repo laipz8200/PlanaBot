@@ -3,6 +3,8 @@ from typing import Any
 import openai
 import tiktoken
 
+encoding: tiktoken.Encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
 
 async def get_completion(
     prompt: str, model: str = "gpt-3.5-turbo", temperature: float = 0
@@ -21,8 +23,5 @@ async def get_completion(
     return response["choices"][0]["message"]["content"]
 
 
-encoding: tiktoken.Encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-
-
-def calc_tokens(prompt: str) -> int:
+async def calc_tokens(prompt: str) -> int:
     return len(encoding.encode(prompt))
