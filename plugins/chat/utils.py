@@ -4,11 +4,7 @@ import openai
 import tiktoken
 
 
-def set_api_key(api_key) -> None:
-    openai.api_key = api_key
-
-
-def get_completion(
+async def get_completion(
     prompt: str, model: str = "gpt-3.5-turbo", temperature: float = 0
 ) -> str:
     response: Any = openai.ChatCompletion.create(

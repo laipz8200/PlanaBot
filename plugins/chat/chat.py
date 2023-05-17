@@ -2,11 +2,12 @@ import json
 import re
 from collections import deque
 
+import openai
 from loguru import logger
 
 from plana import GroupMessage, Plugin
 from plana.objects.messages.array_messages import ArrayMessage
-from plugins.chat.utils import get_completion, set_api_key
+from plugins.chat.utils import get_completion
 
 from .prompts import chat_with_format
 
@@ -20,8 +21,8 @@ class Chat(Plugin):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        set_api_key(self.openai_api_key)
         self.enabled_groups = set(self.config.allowed_groups)
+        openai.api_key = self.openai_api_key
 
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
@@ -37,7 +38,7 @@ class Chat(Plugin):
             self.enabled_groups.add(group_message.group_id)
             await group_message.reply(f"Enabled in group {group_message.group_id}")
         else:
-            await group_message.reply("Unknown command")
+            await group_message.reply(await get_completion(command))
 
     async def on_group(self, group_message: GroupMessage) -> None:
         if group_message.group_id not in self.enabled_groups:
@@ -55,6 +56,9 @@ class Chat(Plugin):
         if not supported_message:
             return
 
+        message = {"user_id": group_message.user_id, "message": supported_message}
+        records.append(message)
+
         bot_reply_count = len(
             list(filter(lambda x: x["user_id"] == group_message.self_id, list(records)))
         )
@@ -62,10 +66,7 @@ class Chat(Plugin):
             logger.debug("Bot replied too many times, skip this message.")
             return
 
-        message = {"user_id": group_message.user_id, "message": supported_message}
-        records.append(message)
-
-        response = get_completion(
+        response = await get_completion(
             chat_with_format.format(self_id=group_message.self_id)
             + "\nHistory:"
             + json.dumps(list(records), ensure_ascii=False),
