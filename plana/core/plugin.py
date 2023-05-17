@@ -78,7 +78,7 @@ class Plugin(BaseModel):
     async def get_group_msg_history(self, group_id: int) -> list[GroupMessage]:
         action = GetGroupMsgHistory(params={"group_id": group_id})
         response = await self._send_action_with_response(action)
-        return [GroupMessage(**msg) for msg in response["data"]]
+        return [GroupMessage(**msg) for msg in response["data"]["messages"]]
 
     async def _send_action_with_response(self, action: Action) -> dict:
         uid = str(uuid.uuid4())
