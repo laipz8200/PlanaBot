@@ -19,7 +19,8 @@ class Chat(Plugin):
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         group_messages = await self.get_group_msg_history(group_message.group_id)
         history_list = [
-            f"{message.user_id}: {message.message}" for message in group_messages
+            f"{message.user_id}: {message.remove_prefix(self.prefix).plain_text()}"
+            for message in group_messages
         ]
         prompt = chat_prompt.format(history_list="\n".join(history_list))
         response = await get_completion(prompt)
