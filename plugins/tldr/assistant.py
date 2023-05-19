@@ -1,54 +1,71 @@
+import asyncio
+
 import markdownify
 import openai
 import tiktoken
 from loguru import logger
 from playwright.async_api import async_playwright
+from prompts import summary, translate
 from readability import Document
 
 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-max_tokens = 3072
+max_tokens = 1024
+
+
+def calc_tokens(prompt: str) -> int:
+    tokens = encoding.encode(prompt)
+    return len(tokens)
+
+
+async def get_completion(prompt, temperature=0) -> str:
+    logger.debug(f"[OpenAI] Prompt:\n{prompt}")
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1024,
+        temperature=temperature,
+    )
+    text = response["choices"][0]["message"]["content"]  # type: ignore
+    logger.debug(f"[OpenAI] Response: {text}")
+    return text
+
+
+def filter_type(route):
+    return (
+        route.abort()
+        if route.request.resource_type in ["image", "font", "ping"]
+        else route.continue_()
+    )
 
 
 class Assistant:
-    def __init__(self, language: str, api_key: str) -> None:
-        openai.api_key = api_key
+    def __init__(self, language) -> None:
         self._language = language
-        self._prompt = """Summarized the following text in {language} in triple backticks by 1 sentence.
-Text:
-```{text}```"""  # noqa: E501
 
-    def _get_summary(self, paragraph_list, summary="") -> str:
-        if paragraph_list:
-            paragraph = paragraph_list.pop(0)
-            if not summary:
-                summary = self._get_completion(self._build_prompt(paragraph))
-            else:
-                summary = self._get_completion(
-                    self._build_prompt(summary + "\n" + paragraph)
-                )
-            return self._get_summary(paragraph_list, summary)
-        return summary
+    async def _get_summary(self, paragraph_list: list[str]) -> str:
+        if len(paragraph_list) <= 2:
+            prompt = summary.format(text="\n".join(paragraph_list))
+            return await get_completion(prompt)
 
-    def _build_prompt(self, prompt: str) -> str:
-        return self._prompt.format(language=self._language, text=prompt)
+        mid = len(paragraph_list) // 2
+        left = paragraph_list[:mid]
+        right = paragraph_list[mid:]
 
-    async def _fetch(self, url):
+        left_summary, right_summary = await asyncio.gather(
+            self._get_summary(left),
+            self._get_summary(right),
+        )
+
+        return await self._get_summary([left_summary, right_summary])
+
+    async def _fetch(self, url) -> str:
         logger.info(f"Fetching {url}")
         async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"  # noqa: E501
-            )
-            page = await context.new_page()
-
-            await page.route(
-                "**/*",
-                lambda route: route.abort()
-                if route.request.resource_type in ["image", "font", "ping"]
-                else route.continue_(),
-            )
-
+            browser = await p.chromium.launch(headless=False)
+            page = await browser.new_page()
+            await page.route("*", filter_type)
             await page.goto(url)
+            await page.wait_for_timeout(1000)
             html = await page.content()
             await browser.close()
             return html
@@ -64,40 +81,31 @@ Text:
         results = []
         ps = content.split("\n")
         for p in ps:
-            if not results or (
-                self._get_tokens(text=results[-1] + "\n" + p) > max_tokens
-            ):
+            if not results:
+                results.append(p)
+                continue
+            prompt = summary.format(text=results[-1] + "\n" + p)
+            if calc_tokens(prompt) > max_tokens:
                 results.append(p)
             else:
                 results[-1] += "\n" + p
         return results
 
-    def _get_tokens(self, text) -> int:
-        prompt = self._prompt.format(language=self._language, text=text)
-        tokens = encoding.encode(prompt)
-        return len(tokens)
-
-    def _get_completion(self, prompt, temperature=0) -> str:
-        logger.debug(f"[OpenAI] Prompt:\n{prompt}")
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=512,
-            temperature=temperature,
-        )
-        text = response["choices"][0]["message"]["content"]  # type: ignore
-        logger.debug(f"[OpenAI] Response: {text}")
-        return text
-
-    def summarize(self, text: str) -> str:
+    async def summarize(self, text: str) -> str:
         paragraph_list = self._split_long_content(text)
-        return self._get_summary(paragraph_list)
+        return await self._get_summary(paragraph_list)
 
-    async def summarize_from_url(self, url):
+    async def summarize_from_url(self, url) -> str:
         try:
             html = await self._fetch(url)
         except Exception as e:
             logger.error(f"Failed to fetch {url}: {e}")
             raise e
 
-        return self.summarize(self._parse_content(html))
+        summary = await self.summarize(self._parse_content(html))
+        prompt = translate.format(language=self._language, text=summary)
+        result = await get_completion(prompt)
+        return result
+
+
+assistant = Assistant("Chinese")
