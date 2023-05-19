@@ -9,10 +9,7 @@ from .assistant import Assistant
 class TLDR(Plugin):
     prefix: str = "#tldr"
     openai_api_key: str = ""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.assistant = Assistant("Chinese", self.openai_api_key)
+    assistant: Assistant = Assistant("Chinese", openai_api_key)
 
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
