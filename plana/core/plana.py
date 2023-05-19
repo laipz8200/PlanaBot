@@ -240,7 +240,9 @@ class Plana:
                 if os.path.isfile(config_file):
                     with open(config_file) as f:
                         config_obj = yaml.safe_load(f)
-                        self.config.plugins_config[plugin_name] = config_obj
+                        self.config.plugins_config[plugin_name] = (
+                            config_obj if config_obj else {}
+                        )
 
     def _init_app(self):
         self.app = FastAPI()
