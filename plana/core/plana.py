@@ -164,7 +164,11 @@ class Plana:
                     plugin_config = self._merge_dict(
                         plugin_config, self.config.plugins_config.get(filename, {})
                     )
-                    plugin = cls(**plugin_config)
+                    try:
+                        plugin = cls(**plugin_config)
+                    except Exception as e:
+                        logger.warning(f"Failed to load plugin: {cls.__name__}: {e}")
+                        continue
                     # FIXME: not sure if this is the best way to do this
                     plugin.response = self.response
 
