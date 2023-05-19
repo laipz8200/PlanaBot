@@ -18,7 +18,7 @@ class TLDR(Plugin):
             await group_message.reply("老师, 请输入正确的网络地址")
         else:
             try:
-                summary = self.assistant.summarize_from_url(command)
+                summary = await self.assistant.summarize_from_url(command)
                 await group_message.reply(summary)
             except Exception as e:
                 await group_message.reply(f"老师, 遇到了错误: {e}")

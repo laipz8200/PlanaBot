@@ -2,7 +2,7 @@ import markdownify
 import openai
 import tiktoken
 from loguru import logger
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 from readability import Document
 
 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
@@ -32,25 +32,25 @@ Text:
     def _build_prompt(self, prompt: str) -> str:
         return self._prompt.format(language=self._language, text=prompt)
 
-    def _fetch(self, url):
+    async def _fetch(self, url):
         logger.info(f"Fetching {url}")
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            context = browser.new_context(
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            context = await browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"  # noqa: E501
             )
-            page = context.new_page()
+            page = await context.new_page()
 
-            page.route(
+            await page.route(
                 "**/*",
                 lambda route: route.abort()
                 if route.request.resource_type in ["image", "font", "ping"]
                 else route.continue_(),
             )
 
-            page.goto(url)
-            html = page.content()
-            browser.close()
+            await page.goto(url)
+            html = await page.content()
+            await browser.close()
             return html
 
     def _parse_content(self, html) -> str:
@@ -93,9 +93,9 @@ Text:
         paragraph_list = self._split_long_content(text)
         return self._get_summary(paragraph_list)
 
-    def summarize_from_url(self, url):
+    async def summarize_from_url(self, url):
         try:
-            html = self._fetch(url)
+            html = await self._fetch(url)
         except Exception as e:
             logger.error(f"Failed to fetch {url}: {e}")
             raise e
