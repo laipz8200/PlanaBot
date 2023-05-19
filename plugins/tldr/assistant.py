@@ -5,7 +5,7 @@ import openai
 import tiktoken
 from loguru import logger
 from playwright.async_api import async_playwright
-from prompts import summary, translate
+from .prompts import summary, translate
 from readability import Document
 
 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
