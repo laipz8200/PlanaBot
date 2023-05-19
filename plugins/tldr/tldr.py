@@ -9,7 +9,11 @@ from .assistant import Assistant
 class TLDR(Plugin):
     prefix: str = "#tldr"
     openai_api_key: str = ""
-    assistant: Assistant = Assistant("Chinese", openai_api_key)
+    assistant: Assistant | None = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.assistant = Assistant("Chinese", self.openai_api_key)
 
     async def on_group_prefix(self, group_message: GroupMessage) -> None:
         command = group_message.plain_text()
@@ -17,6 +21,8 @@ class TLDR(Plugin):
         if not re.match(r"^https?://.*", command):
             await group_message.reply("老师, 请输入正确的网络地址")
         else:
+            if not self.assistant:
+                self.assistant = Assistant("Chinese", self.openai_api_key)
             try:
                 summary = await self.assistant.summarize_from_url(command)
                 await group_message.reply(summary)
