@@ -1,7 +1,7 @@
-summary = """Summarized the following text in triple backticks by 1-2 sentence.
+summary = """Summarized the following text by 1-2 sentence.
 ```{text}```
 """
 
-translate = """Translated the following text in triple backticks into {language}.
+translate = """Translated the following text into {language}.
 ```{text}```
 """
