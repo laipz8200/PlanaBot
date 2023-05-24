@@ -68,8 +68,12 @@ class Assistant:
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"  # noqa: E501
             }
         ) as c:
-            response = await c.get(url, timeout=10)
-            return response.text
+            try:
+                response = await c.get(url, timeout=10)
+                return response.text
+            except Exception as e:
+                logger.error(f"failed to fetch {url}: {e}")
+                raise e
         # async with async_playwright() as p:
         #     browser = await p.chromium.launch()
         #     page = await browser.new_page()
@@ -106,12 +110,7 @@ class Assistant:
         return await self._get_summary(paragraph_list)
 
     async def summarize_from_url(self, url) -> str:
-        try:
-            html = await self._fetch(url)
-        except Exception as e:
-            logger.error(f"Failed to fetch {url}: {e}")
-            raise e
-
+        html = await self._fetch(url)
         summary = await self.summarize(self._parse_content(html))
         prompt = translate.format(language=self._language, text=summary)
         result = await get_completion(prompt)

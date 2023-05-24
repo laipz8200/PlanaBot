@@ -4,6 +4,7 @@ import re
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
+from loguru import logger
 
 from plana import Plugin
 from plana.messages.group_message import GroupMessage
@@ -27,16 +28,18 @@ class Bilibili(Plugin):
             msg_type = part.get("type")
             if msg_type == "json":
                 json_data = json.loads(part["data"]["data"])
-                if "哔哩哔哩" in json_data.get("prompt", ""):
-                    meta = json_data.get("meta", {})
-                    detail_1 = meta.get("detail_1", {})
-                    short_url = detail_1.get("qqdocurl")
-                    short_urls.append(short_url)
-                elif "哔哩哔哩" in json_data.get("tag", ""):
-                    meta = json_data.get("meta", {})
-                    news = meta.get("news", {})
-                    jumpUrl = news.get("jumpUrl")
-                    short_urls.append(jumpUrl)
+                if get_nested_value(json_data, ["appID"], "") == "100951776":
+                    if short_url := get_nested_value(
+                        json_data,
+                        ["meta", "detail_1", "qqdocurl"],
+                    ):
+                        short_urls.append(short_url)
+                elif get_nested_value(json_data, ["extra", "appid"], 0) == 100951776:
+                    if short_url := get_nested_value(
+                        json_data,
+                        ["meta", "news", "jumpUrl"],
+                    ):
+                        short_urls.append(short_url)
             elif msg_type == "text":
                 text = part["data"]["text"]
                 pattern = r"https://b23\.tv/[\w\d]+"
@@ -46,12 +49,22 @@ class Bilibili(Plugin):
             self.parse_short_url(short_url)
             for short_url in filter(lambda x: x, short_urls)
         ]
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        return [url for url in results if url is not None]
 
-    async def parse_short_url(self, short_url: str) -> str:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(short_url, follow_redirects=True, timeout=10)
-        return self.sanitize_bilibili(str(response.url))
+    async def parse_short_url(self, short_url: str) -> str | None:
+        async with httpx.AsyncClient(
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"  # noqa: E501
+            }
+        ) as client:
+            try:
+                response = await client.get(
+                    short_url, follow_redirects=True, timeout=10
+                )
+                return self.sanitize_bilibili(str(response.url))
+            except Exception as e:
+                logger.error(f"failed to access bilibili url {short_url}: {e}")
 
     def sanitize_bilibili(self, url: str) -> str:
         parsed_url = urlparse(url)
@@ -61,3 +74,14 @@ class Bilibili(Plugin):
         new_parsed_url = parsed_url._replace(query=new_query_string)
         new_url = urlunparse(new_parsed_url)
         return new_url
+
+
+def get_nested_value(dictionary, keys, default=None):
+    if isinstance(dictionary, dict) and keys:
+        key = keys[0]
+        if key in dictionary:
+            if len(keys) == 1:
+                return dictionary[key]
+            else:
+                return get_nested_value(dictionary[key], keys[1:], default)
+    return default
