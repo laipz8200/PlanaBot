@@ -80,52 +80,53 @@ class Plana:
                 event.set()
 
     async def _handle_private_message_event(self, event: dict):
-        private_message = PrivateMessage(**event)
-        logger.info(private_message)
+        message = PrivateMessage(**event)
+        logger.info(message)
+        if (
+            not self.config.reply_private_message
+            and message.user_id != self.config.master_id
+        ):
+            logger.info(f"Ignoring private message from {message.user_id}")
+            return
 
         plugins = filter(
             lambda plugin: (not plugin.master_only)
-            or (
-                plugin.master_only
-                and private_message.sender.user_id == self.config.master_id
-            ),
+            or (plugin.master_only and message.sender.user_id == self.config.master_id),
             self.plugins,
         )
         plugins = list(plugins)
-        tasks = [plugin.handle_on_private(private_message) for plugin in plugins]
+        tasks = [plugin.handle_on_private(message) for plugin in plugins]
 
         plugins = filter(
-            lambda plugin: plugin.prefix and private_message.on_prefix(plugin.prefix),
+            lambda plugin: plugin.prefix and message.on_prefix(plugin.prefix),
             plugins,
         )
-        tasks += [
-            plugin.handle_on_private_prefix(private_message) for plugin in plugins
-        ]
+        tasks += [plugin.handle_on_private_prefix(message) for plugin in plugins]
         asyncio.gather(*tasks)
 
     async def _handle_group_message_event(self, event: dict):
-        group_message = GroupMessage(**event)
-        logger.info(group_message)
+        message = GroupMessage(**event)
+        logger.info(message)
 
         plugins = filter(
-            lambda plugin: (group_message.group_id in plugin.config.allowed_groups)
+            lambda plugin: (message.group_id in plugin.config.allowed_groups)
             and (
                 (not plugin.master_only)
                 or (
                     plugin.master_only
-                    and group_message.sender.user_id == self.config.master_id
+                    and message.sender.user_id == self.config.master_id
                 )
             ),
             self.plugins,
         )
         plugins = list(plugins)
-        tasks = [plugin.handle_on_group(group_message) for plugin in plugins]
+        tasks = [plugin.handle_on_group(message) for plugin in plugins]
 
         plugins = filter(
-            lambda plugin: plugin.prefix and group_message.on_prefix(plugin.prefix),
+            lambda plugin: plugin.prefix and message.on_prefix(plugin.prefix),
             plugins,
         )
-        tasks += [plugin.handle_on_group_prefix(group_message) for plugin in plugins]
+        tasks += [plugin.handle_on_group_prefix(message) for plugin in plugins]
         asyncio.gather(*tasks)
 
     def _init_plugins(self) -> None:

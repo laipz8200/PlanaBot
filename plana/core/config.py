@@ -7,3 +7,4 @@ class PlanaConfig(BaseModel):
     enabled_plugins: list[str] = ["echo", "bilibili"]
     plugins_dir: str = "plugins"
     plugins_config: dict = {}
+    reply_private_message: bool = False
