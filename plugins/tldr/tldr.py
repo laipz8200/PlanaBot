@@ -2,11 +2,10 @@ import re
 from typing import Any
 
 import httpx
-import openai
 import readability
 import tiktoken
 from langchain import LLMChain, PromptTemplate
-from langchain.chains import SequentialChain, SimpleSequentialChain
+from langchain.chains import SequentialChain
 from langchain.chains.summarize import load_summarize_chain
 from langchain.chat_models import ChatOpenAI
 from langchain.docstore.document import Document
@@ -32,40 +31,44 @@ text_splitter = MarkdownTextSplitter(
     length_function=tiktoken_len,
 )
 
-llm = ChatOpenAI(temperature=0.0)  # type: ignore
-
-summarize_chain = load_summarize_chain(
-    llm,
-    chain_type="map_reduce",
-    output_key="text",
-    verbose=True,
-)
-translate_chain = LLMChain(
-    llm=llm,
-    prompt=PromptTemplate.from_template(translate_template),
-    output_key="translated_text",
-    verbose=True,
-)
-
-chain = SequentialChain(
-    chains=[summarize_chain, translate_chain],
-    input_variables=["input_documents", "language"],
-    output_variables=["text", "translated_text"],
-)
-
-chain = SimpleSequentialChain(chains=[summarize_chain, translate_chain], verbose=True)
-
 
 class TLDR(Plugin):
     prefix: str = "#tldr"
     openai_api_key: str
-    llm: Any = None
+    chain: Any | SequentialChain = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        openai.api_key = self.openai_api_key
+
+        llm = ChatOpenAI(
+            temperature=0.0,
+            openai_api_key=self.openai_api_key,
+        )  # type: ignore
+
+        summarize_chain = load_summarize_chain(
+            llm,
+            chain_type="map_reduce",
+            output_key="text",
+            verbose=True,
+        )
+        translate_chain = LLMChain(
+            llm=llm,
+            prompt=PromptTemplate.from_template(translate_template),
+            output_key="translated_text",
+            verbose=True,
+        )
+
+        self.chain = SequentialChain(
+            chains=[summarize_chain, translate_chain],
+            input_variables=["input_documents", "language"],
+            output_variables=["text", "translated_text"],
+        )
 
     async def _summarize(self, message: BaseMessage) -> None:
+        if self.chain is None:
+            await message.reply("老师, 总结模块异常, 请等我检查一下")
+            return
+
         command = message.plain_text()
         # 判断command是不是合法 url
         if not re.match(r"^https?://.*", command):
@@ -89,7 +92,9 @@ class TLDR(Plugin):
             chunks = text_splitter.split_text(markdown)
             docs = [Document(page_content=chunk) for chunk in chunks]
 
-            result = await chain.acall({"input_documents": docs, "language": "Chinese"})
+            result = await self.chain.acall(
+                {"input_documents": docs, "language": "Chinese"}
+            )
             await message.reply(result["translated_text"])
         except Exception as e:
             await message.reply(f"老师, 遇到了错误: {e}")
