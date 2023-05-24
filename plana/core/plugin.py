@@ -86,7 +86,7 @@ class Plugin(BaseModel):
         async with self.lock:
             event = asyncio.Event()
             self.response[uid] = {"event": event}
-        asyncio.create_task(self.queue.put(action))
+        await self.queue.put(action)
         response = await self._wait_for_response(event, uid)
         return response
 
