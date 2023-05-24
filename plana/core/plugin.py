@@ -23,43 +23,43 @@ class Plugin(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    async def on_group(self, group_message: GroupMessage):
+    async def on_group(self, group_message: GroupMessage) -> None:
         pass
 
-    async def on_group_prefix(self, group_message: GroupMessage):
+    async def on_group_prefix(self, group_message: GroupMessage) -> None:
         pass
 
-    async def on_private(self, private_message: PrivateMessage):
+    async def on_private(self, private_message: PrivateMessage) -> None:
         pass
 
-    async def on_private_prefix(self, private_message: PrivateMessage):
+    async def on_private_prefix(self, private_message: PrivateMessage) -> None:
         pass
 
-    async def handle_on_group(self, group_message: GroupMessage):
+    async def handle_on_group(self, group_message: GroupMessage) -> None:
         group_message.load_plugin(self)
         return await self.on_group(group_message)
 
-    async def handle_on_group_prefix(self, group_message: GroupMessage):
+    async def handle_on_group_prefix(self, group_message: GroupMessage) -> None:
         group_message.load_plugin(self)
         if self.prefix:
             new_message = group_message.remove_prefix(self.prefix)
             return await self.on_group_prefix(new_message)
 
-    async def handle_on_private(self, private_message: PrivateMessage):
+    async def handle_on_private(self, private_message: PrivateMessage) -> None:
         private_message.load_plugin(self)
         return await self.on_private(private_message)
 
-    async def handle_on_private_prefix(self, private_message: PrivateMessage):
+    async def handle_on_private_prefix(self, private_message: PrivateMessage) -> None:
         private_message.load_plugin(self)
         if self.prefix:
             new_message = private_message.remove_prefix(self.prefix)
             return await self.on_private_prefix(new_message)
 
-    async def send_group_message(self, group_id: int, message: Message | str):
+    async def send_group_message(self, group_id: int, message: Message | str) -> None:
         action = SendGroupMessage(params={"group_id": group_id, "message": message})
         await self.queue.put(action)
 
-    async def send_private_message(self, user_id: int, message: Message | str):
+    async def send_private_message(self, user_id: int, message: Message | str) -> None:
         action = SendPrivateMessage(params={"user_id": user_id, "message": message})
         await self.queue.put(action)
 
