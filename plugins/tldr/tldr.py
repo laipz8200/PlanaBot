@@ -76,6 +76,7 @@ class TLDR(Plugin):
             return
 
         try:
+            await message.reply(f"Plana 开始尝试访问 {command}")
             response = httpx.get(
                 command,
                 timeout=10,
@@ -92,10 +93,11 @@ class TLDR(Plugin):
             chunks = text_splitter.split_text(markdown)
             docs = [Document(page_content=chunk) for chunk in chunks]
 
+            await message.reply("正在阅读并总结内容...")
             result = await self.chain.acall(
                 {"input_documents": docs, "language": "Chinese"}
             )
-            await message.reply(result["translated_text"])
+            await message.reply(f'老师, 这是你需要的结果:\n{result["translated_text"]}')
         except Exception as e:
             await message.reply(f"老师, 遇到了错误: {e}")
 
