@@ -84,6 +84,11 @@ class TLDR(Plugin):
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"  # noqa: E501
                 },
             )
+            if response.status_code != httpx.codes.OK:
+                await message.reply(
+                    f"老师, 网站返回了 {response.status_code} 状态码, 内容是 {response.text}"  # noqa: E501
+                )
+                return
             doc = readability.Document(response.text)
             markdown = markdownify(doc.summary(), heading_style="ATX")
             if not markdown.split():
