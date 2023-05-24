@@ -16,7 +16,7 @@ class TLDR(Plugin):
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
 
-    async def on_private(self, private_message: PrivateMessage) -> None:
+    async def on_private_prefix(self, private_message: PrivateMessage) -> None:
         command = private_message.plain_text()
         # 判断command是不是合法 url
         if not re.match(r"^https?://.*", command):
