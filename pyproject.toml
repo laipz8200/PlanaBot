@@ -17,6 +17,7 @@ pyyaml = "^6.0"
 apscheduler = "^3.10.1"
 markdownify = "^0.11.6"
 readability-lxml = "^0.8.1"
+langchain = "^0.0.179"
 
 
 [tool.poetry.group.dev.dependencies]

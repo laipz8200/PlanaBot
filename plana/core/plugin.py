@@ -23,36 +23,36 @@ class Plugin(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    async def on_group(self, group_message: GroupMessage) -> None:
+    async def on_group(self, message: GroupMessage) -> None:
         pass
 
-    async def on_group_prefix(self, group_message: GroupMessage) -> None:
+    async def on_group_prefix(self, message: GroupMessage) -> None:
         pass
 
-    async def on_private(self, private_message: PrivateMessage) -> None:
+    async def on_private(self, message: PrivateMessage) -> None:
         pass
 
-    async def on_private_prefix(self, private_message: PrivateMessage) -> None:
+    async def on_private_prefix(self, message: PrivateMessage) -> None:
         pass
 
-    async def handle_on_group(self, group_message: GroupMessage) -> None:
-        group_message.load_plugin(self)
-        return await self.on_group(group_message)
+    async def handle_on_group(self, message: GroupMessage) -> None:
+        message.load_plugin(self)
+        return await self.on_group(message)
 
-    async def handle_on_group_prefix(self, group_message: GroupMessage) -> None:
-        group_message.load_plugin(self)
+    async def handle_on_group_prefix(self, message: GroupMessage) -> None:
+        message.load_plugin(self)
         if self.prefix:
-            new_message = group_message.remove_prefix(self.prefix)
+            new_message = message.remove_prefix(self.prefix)
             return await self.on_group_prefix(new_message)
 
-    async def handle_on_private(self, private_message: PrivateMessage) -> None:
-        private_message.load_plugin(self)
-        return await self.on_private(private_message)
+    async def handle_on_private(self, message: PrivateMessage) -> None:
+        message.load_plugin(self)
+        return await self.on_private(message)
 
-    async def handle_on_private_prefix(self, private_message: PrivateMessage) -> None:
-        private_message.load_plugin(self)
+    async def handle_on_private_prefix(self, message: PrivateMessage) -> None:
+        message.load_plugin(self)
         if self.prefix:
-            new_message = private_message.remove_prefix(self.prefix)
+            new_message = message.remove_prefix(self.prefix)
             return await self.on_private_prefix(new_message)
 
     async def send_group_message(self, group_id: int, message: Message | str) -> None:

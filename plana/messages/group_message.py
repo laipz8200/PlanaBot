@@ -18,7 +18,7 @@ class GroupMessage(BaseMessage):
     def __repr__(self) -> str:
         return str(self)
 
-    async def reply(self, message: Message | str):
+    async def reply(self, message: Message | str) -> None:
         if not self.plugin:
             raise Exception("Plugin not loaded")
         if isinstance(message, str):

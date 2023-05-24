@@ -1,41 +1,101 @@
 import re
+from typing import Any
 
+import httpx
 import openai
+import readability
+import tiktoken
+from langchain import LLMChain, PromptTemplate
+from langchain.chains import SequentialChain, SimpleSequentialChain
+from langchain.chains.summarize import load_summarize_chain
+from langchain.chat_models import ChatOpenAI
+from langchain.docstore.document import Document
+from langchain.text_splitter import MarkdownTextSplitter
+from markdownify import markdownify
 
 from plana import Plugin
-from plana.messages import GroupMessage, PrivateMessage
+from plana.messages import BaseMessage, GroupMessage, PrivateMessage
 
-from .assistant import assistant
+from .prompts import translate_template
+
+encoding: tiktoken.Encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+
+def tiktoken_len(prompt: str) -> int:
+    tokens = encoding.encode(prompt)
+    return len(tokens)
+
+
+text_splitter = MarkdownTextSplitter(
+    chunk_size=1024,
+    chunk_overlap=0,
+    length_function=tiktoken_len,
+)
+
+llm = ChatOpenAI(temperature=0.0)  # type: ignore
+
+summarize_chain = load_summarize_chain(
+    llm,
+    chain_type="map_reduce",
+    output_key="text",
+    verbose=True,
+)
+translate_chain = LLMChain(
+    llm=llm,
+    prompt=PromptTemplate.from_template(translate_template),
+    output_key="translated_text",
+    verbose=True,
+)
+
+chain = SequentialChain(
+    chains=[summarize_chain, translate_chain],
+    input_variables=["input_documents", "language"],
+    output_variables=["text", "translated_text"],
+)
+
+chain = SimpleSequentialChain(chains=[summarize_chain, translate_chain], verbose=True)
 
 
 class TLDR(Plugin):
     prefix: str = "#tldr"
-    openai_api_key: str = ""
+    openai_api_key: str
+    llm: Any = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
 
-    async def on_private_prefix(self, private_message: PrivateMessage) -> None:
-        command = private_message.plain_text()
+    async def _summarize(self, message: BaseMessage) -> None:
+        command = message.plain_text()
         # 判断command是不是合法 url
         if not re.match(r"^https?://.*", command):
-            await private_message.reply("老师, 请输入正确的网络地址")
-        else:
-            try:
-                summary = await assistant.summarize_from_url(command)
-                await private_message.reply(summary)
-            except Exception as e:
-                await private_message.reply(f"老师, 遇到了错误: {e}")
+            await message.reply("老师, 请输入正确的网络地址")
+            return
 
-    async def on_group_prefix(self, group_message: GroupMessage) -> None:
-        command = group_message.plain_text()
-        # 判断command是不是合法 url
-        if not re.match(r"^https?://.*", command):
-            await group_message.reply("老师, 请输入正确的网络地址")
-        else:
-            try:
-                summary = await assistant.summarize_from_url(command)
-                await group_message.reply(summary)
-            except Exception as e:
-                await group_message.reply(f"老师, 遇到了错误: {e}")
+        try:
+            response = httpx.get(
+                command,
+                timeout=10,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"  # noqa: E501
+                },
+            )
+            doc = readability.Document(response.text)
+            markdown = markdownify(doc.summary(), heading_style="ATX")
+            if not markdown.split():
+                await message.reply("老师, 没有获取到内容")
+                return
+
+            chunks = text_splitter.split_text(markdown)
+            docs = [Document(page_content=chunk) for chunk in chunks]
+
+            result = await chain.acall({"input_documents": docs, "language": "Chinese"})
+            await message.reply(result["translated_text"])
+        except Exception as e:
+            await message.reply(f"老师, 遇到了错误: {e}")
+
+    async def on_private_prefix(self, message: PrivateMessage) -> None:
+        await self._summarize(message)
+
+    async def on_group_prefix(self, message: GroupMessage) -> None:
+        await self._summarize(message)

@@ -50,3 +50,6 @@ class BaseMessage(BaseModel):
         if ignore_case:
             return text.lower() in self.plain_text().lower()
         return text in self.plain_text()
+
+    async def reply(self, message: Message | str) -> None:
+        raise NotImplementedError
