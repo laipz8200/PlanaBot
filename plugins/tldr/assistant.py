@@ -1,12 +1,15 @@
 import asyncio
 
+import httpx
 import markdownify
 import openai
 import tiktoken
 from loguru import logger
-from playwright.async_api import async_playwright
-from .prompts import summary, translate
+
+# from playwright.async_api import async_playwright
 from readability import Document
+
+from .prompts import summary, translate
 
 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
 max_tokens = 1024
@@ -60,15 +63,22 @@ class Assistant:
 
     async def _fetch(self, url) -> str:
         logger.info(f"Fetching {url}")
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            page = await browser.new_page()
-            await page.route("*", filter_type)
-            await page.goto(url)
-            await page.wait_for_timeout(1000)
-            html = await page.content()
-            await browser.close()
-            return html
+        async with httpx.AsyncClient(
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"  # noqa: E501
+            }
+        ) as c:
+            response = await c.get(url, timeout=10)
+            return response.text
+        # async with async_playwright() as p:
+        #     browser = await p.chromium.launch()
+        #     page = await browser.new_page()
+        #     await page.route("*", filter_type)
+        #     await page.goto(url)
+        #     await page.wait_for_timeout(1000)
+        #     html = await page.content()
+        #     await browser.close()
+        #     return html
 
     def _parse_content(self, html) -> str:
         doc = Document(html)

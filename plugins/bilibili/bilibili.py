@@ -32,6 +32,11 @@ class Bilibili(Plugin):
                     detail_1 = meta.get("detail_1", {})
                     short_url = detail_1.get("qqdocurl")
                     short_urls.append(short_url)
+                elif "哔哩哔哩" in json_data.get("tag", ""):
+                    meta = json_data.get("meta", {})
+                    news = meta.get("news", {})
+                    jumpUrl = news.get("jumpUrl")
+                    short_urls.append(jumpUrl)
             elif msg_type == "text":
                 text = part["data"]["text"]
                 pattern = r"https://b23\.tv/[\w\d]+"
