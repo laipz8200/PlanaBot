@@ -3,7 +3,7 @@ name = "plana"
 version = "0.1.0"
 description = ""
 authors = ["-LAN- <laipz8200@outlook.com>"]
-readme = "README.md"
+readme = "README.rst"
 
 [tool.poetry.dependencies]
 python = "^3.11"
