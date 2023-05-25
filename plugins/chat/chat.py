@@ -1,7 +1,8 @@
 import openai
 from loguru import logger
 
-from plana import GroupMessage, Plugin
+from plana import Plugin
+from plana.messages import BaseMessage, GroupMessage, PrivateMessage
 
 from .utils import get_completion
 
@@ -14,9 +15,15 @@ class Chat(Plugin):
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
 
-    async def on_group_prefix(self, group_message: GroupMessage) -> None:
-        prompt = group_message.plain_text()
+    async def on_private_prefix(self, message: PrivateMessage) -> None:
+        await self._chat(message)
+
+    async def on_group_prefix(self, message: GroupMessage) -> None:
+        await self._chat(message)
+
+    async def _chat(self, message: BaseMessage) -> None:
+        prompt = message.plain_text()
         logger.debug(f"[Chat] {prompt=}")
         response = await get_completion(prompt)
         logger.debug(f"[Chat] {response=}")
-        await group_message.reply(response)
+        await message.reply(response)

@@ -202,6 +202,7 @@ class Plana:
         while True:
             action: Action = await queue.get()
             await websocket.send_json(action.dict())
+            await asyncio.sleep(2)
 
     def _merge_dict(self, dict1, dict2):
         for key in dict2:
