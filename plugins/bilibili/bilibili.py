@@ -69,7 +69,7 @@ class Bilibili(Plugin):
     def sanitize_bilibili(self, url: str) -> str:
         parsed_url = urlparse(url)
         query_params = parse_qs(parsed_url.query)
-        filtered_params = {k: v for k, v in query_params.items() if k == "p"}
+        filtered_params = {k: v for k, v in query_params.items() if k in ["t", "p"]}
         new_query_string = urlencode(filtered_params, doseq=True)
         new_parsed_url = parsed_url._replace(query=new_query_string)
         new_url = urlunparse(new_parsed_url)
