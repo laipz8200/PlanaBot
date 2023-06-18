@@ -26,7 +26,7 @@ def tiktoken_len(prompt: str) -> int:
 
 
 text_splitter = MarkdownTextSplitter(
-    chunk_size=1024,
+    chunk_size=1024 * 14,
     chunk_overlap=0,
     length_function=tiktoken_len,
 )
@@ -41,6 +41,7 @@ class TLDR(Plugin):
         super().__init__(*args, **kwargs)
 
         llm = ChatOpenAI(
+            model="gpt-3.5-turbo-16k",
             temperature=0.0,
             openai_api_key=self.openai_api_key,
         )  # type: ignore
