@@ -26,7 +26,7 @@ def tiktoken_len(prompt: str) -> int:
 
 
 text_splitter = MarkdownTextSplitter(
-    chunk_size=1024 * 14,
+    chunk_size=1024 * 10,
     chunk_overlap=0,
     length_function=tiktoken_len,
 )
