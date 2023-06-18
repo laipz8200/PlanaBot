@@ -1,3 +1,3 @@
-autoflake --remove-all-unused-imports -r --exclude __init__.py --exclude .venv --in-place .
+autoflake --remove-all-unused-imports -r --exclude .venv,__init__.py --in-place .
 isort --profile black .
 black .
