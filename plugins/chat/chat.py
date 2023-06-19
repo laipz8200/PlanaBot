@@ -1,17 +1,21 @@
 import typing
 
 import openai
-from langchain.agents import AgentType, initialize_agent, load_tools
+from langchain.agents import AgentExecutor, AgentType, initialize_agent, load_tools
 from langchain.chat_models import ChatOpenAI
 
 from plana import Plugin
 from plana.messages import BaseMessage, GroupMessage, PrivateMessage
 
+translate_template = """Translated the following text into {language}.
+```{text}```
+"""
+
 
 class Chat(Plugin):
     prefix: str = "#chat"
     openai_api_key: str = ""
-    agent: typing.Any = None
+    agent: typing.Any | AgentExecutor = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -36,8 +40,8 @@ class Chat(Plugin):
 
     async def _chat(self, message: BaseMessage) -> None:
         prompt = message.plain_text()
-        return self.agent.run(prompt)
+        response = self.agent.run(prompt)
         # logger.debug(f"[Chat] {prompt=}")
         # response = await get_completion(prompt)
         # logger.debug(f"[Chat] {response=}")
-        # await message.reply(response)
+        await message.reply(response)
