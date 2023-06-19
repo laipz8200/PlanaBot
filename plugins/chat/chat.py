@@ -3,7 +3,8 @@ import typing
 from typing import Any, List, Optional, Sequence
 
 import openai
-from langchain.agents import Agent, AgentExecutor, AgentOutputParser, Tool, load_tools
+from langchain.agents import AgentExecutor, Tool, load_tools
+from langchain.agents.agent import Agent, AgentOutputParser
 from langchain.agents.chat.base import ChatAgent
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.base import BaseCallbackManager
@@ -22,7 +23,7 @@ translate_template = """Translated the following text into {language}.
 ```{text}```
 """
 
-SYSTEM_MESSAGE_PREFIX = """Answer the following questions **IN CHINESE** as best you can. You have access to the following tools:"""  # noqa: E501
+SYSTEM_MESSAGE_PREFIX = """Answer the following questions as best you can. You have access to the following tools:"""  # noqa: E501
 FORMAT_INSTRUCTIONS = """The way you use the tools is by specifying a json blob.
 Specifically, this json should have a `action` key (with the name of the tool to use) and a `action_input` key (with the input to the tool going here).
 
@@ -48,8 +49,8 @@ $JSON_BLOB
 Observation: the result of the action
 ... (this Thought/Action/Observation can repeat N times)
 Thought: I now know the final answer
-Final Answer: the final answer to the original input question"""  # noqa: E501
-SYSTEM_MESSAGE_SUFFIX = """\nBegin! Reminder to always use the exact characters `Final Answer` when responding."""  # noqa: E501
+Final Answer: the final answer to the original input question that be translated into Chinese"""  # noqa: E501
+SYSTEM_MESSAGE_SUFFIX = """\nBegin! Reminder to always answer in Chinese and use the exact characters `Final Answer` when responding."""  # noqa: E501
 HUMAN_MESSAGE = "{input}\n\n{agent_scratchpad}"
 
 
@@ -145,7 +146,7 @@ class Chat(Plugin):
         search = SerpAPIWrapper(params=params)  # type: ignore
         search_tool = Tool(
             name="Search",
-            description="一个搜索引擎。当您需要回答有关当前事件的问题时非常有用。输入应该是一组关键词。",  # noqa: E501
+            description="A search engine. Useful for when you need to answer questions about current events. Input should be a search query.",  # noqa: E501
             func=search.run,
             coroutine=search.arun,
         )
