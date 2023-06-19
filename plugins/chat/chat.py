@@ -104,7 +104,7 @@ class Chat(Plugin):
         search = SerpAPIWrapper(params=params)  # type: ignore
         search_tool = Tool(
             name="Search",
-            description="A search engine. Useful for when you need to answer questions about current events. Input should be a search query.",  # noqa: E501
+            description="一个搜索引擎。当您需要回答有关当前事件的问题时非常有用。输入应该是一组关键词。",  # noqa: E501
             func=search.run,
             coroutine=search.arun,
         )
