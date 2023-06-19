@@ -1,3 +1,4 @@
+import os
 import typing
 
 import openai
@@ -15,19 +16,19 @@ translate_template = """Translated the following text into {language}.
 class Chat(Plugin):
     prefix: str = "#chat"
     openai_api_key: str = ""
+    serp_api_key: str = ""
     agent: typing.Any | AgentExecutor = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
+        os.environ["SERPAPI_API_KEY"] = self.serp_api_key
         llm = ChatOpenAI(
             model="gpt-3.5-turbo-16k",
             temperature=0.0,
             openai_api_key=self.openai_api_key,
         )  # type: ignore
-        tools = load_tools(
-            ["python_repl", "requests", "llm-math", "ddg-search"], llm=llm
-        )
+        tools = load_tools(["python_repl", "requests", "llm-math", "serpapi"], llm=llm)
         self.agent = initialize_agent(
             tools, llm, agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True
         )
