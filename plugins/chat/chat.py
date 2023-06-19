@@ -29,7 +29,9 @@ class Chat(Plugin):
             temperature=0.0,
             openai_api_key=self.openai_api_key,
         )  # type: ignore
-        tools = load_tools(["python_repl", "requests", "llm-math", "serpapi"], llm=llm)
+        tools = load_tools(
+            ["python_repl", "requests_all", "llm-math", "serpapi"], llm=llm
+        )
         self.agent = initialize_agent(
             tools, llm, agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True
         )
