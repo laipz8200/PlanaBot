@@ -4,6 +4,7 @@ import typing
 import openai
 from langchain.agents import AgentExecutor, AgentType, initialize_agent, load_tools
 from langchain.chat_models import ChatOpenAI
+from loguru import logger
 
 from plana import Plugin
 from plana.messages import BaseMessage, GroupMessage, PrivateMessage
@@ -40,9 +41,10 @@ class Chat(Plugin):
         await self._chat(message)
 
     async def _chat(self, message: BaseMessage) -> None:
-        prompt = message.plain_text()
-        response = self.agent.run(prompt)
-        # logger.debug(f"[Chat] {prompt=}")
-        # response = await get_completion(prompt)
-        # logger.debug(f"[Chat] {response=}")
-        await message.reply(response)
+        prompt = "请用中文回答: " + message.plain_text()
+        try:
+            response = self.agent.run(prompt)
+            await message.reply(response)
+        except Exception as e:
+            logger.warning(f"failed to run agent: {e}")
+            await message.reply("出错啦，请稍后再试")
