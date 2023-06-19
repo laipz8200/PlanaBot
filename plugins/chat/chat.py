@@ -46,7 +46,7 @@ Observation: the result of the action
 ... (this Thought/Action/Observation can repeat N times)
 Thought: I now know the final answer
 Final Answer: the final answer to the original input question"""  # noqa: E501
-SYSTEM_MESSAGE_SUFFIX = """Begin! Reminder to always use the exact characters `Final Answer` when responding."""  # noqa: E501
+SYSTEM_MESSAGE_SUFFIX = """Begin! Reminder to always use the exact characters `Final Answer` when responding and use Chinese in thought."""  # noqa: E501
 HUMAN_MESSAGE = "{input}\n\n{agent_scratchpad}"
 
 
