@@ -2,8 +2,15 @@ import os
 import typing
 
 import openai
-from langchain.agents import AgentExecutor, AgentType, initialize_agent, load_tools
+from langchain.agents import (
+    AgentExecutor,
+    AgentType,
+    Tool,
+    initialize_agent,
+    load_tools,
+)
 from langchain.chat_models import ChatOpenAI
+from langchain.utilities import SerpAPIWrapper
 from loguru import logger
 
 from plana import Plugin
@@ -24,14 +31,24 @@ class Chat(Plugin):
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
         os.environ["SERPAPI_API_KEY"] = self.serp_api_key
+
         llm = ChatOpenAI(
             model="gpt-3.5-turbo-16k",
             temperature=0.0,
             openai_api_key=self.openai_api_key,
         )  # type: ignore
-        tools = load_tools(
-            ["python_repl", "requests_all", "llm-math", "serpapi"], llm=llm
+
+        tools = load_tools(["python_repl", "requests_all", "llm-math"], llm=llm)
+        params = {"engine": "google", "gl": "us", "hl": "zh-cn"}
+        search = SerpAPIWrapper(params=params)  # type: ignore
+        search_tool = Tool(
+            name="Search",
+            description="A search engine. Useful for when you need to answer questions about current events. Input should be a search query.",  # noqa: E501
+            func=search.run,
+            coroutine=search.arun,
         )
+        tools.append(search_tool)
+
         self.agent = initialize_agent(
             tools, llm, agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True
         )
