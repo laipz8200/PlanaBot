@@ -1,15 +1,20 @@
 import os
 import typing
+from typing import List, Optional, Sequence
 
 import openai
-from langchain.agents import (
-    AgentExecutor,
-    AgentType,
-    Tool,
-    initialize_agent,
-    load_tools,
+from langchain.agents import AgentExecutor, Tool, load_tools
+from langchain.agents.chat.base import ChatAgent
+from langchain.agents.chat.prompt import (
+    FORMAT_INSTRUCTIONS,
+    HUMAN_MESSAGE,
+    SYSTEM_MESSAGE_PREFIX,
+    SYSTEM_MESSAGE_SUFFIX,
 )
 from langchain.chat_models import ChatOpenAI
+from langchain.prompts.base import BasePromptTemplate
+from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain.tools.base import BaseTool
 from langchain.utilities import SerpAPIWrapper
 from loguru import logger
 
@@ -19,6 +24,38 @@ from plana.messages import BaseMessage, GroupMessage, PrivateMessage
 translate_template = """Translated the following text into {language}.
 ```{text}```
 """
+
+
+class CustomChatAgent(ChatAgent):
+    @classmethod
+    def create_prompt(
+        cls,
+        tools: Sequence[BaseTool],
+        system_message_prefix: str = SYSTEM_MESSAGE_PREFIX,
+        system_message_suffix: str = SYSTEM_MESSAGE_SUFFIX,
+        human_message: str = HUMAN_MESSAGE,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
+        input_variables: Optional[List[str]] = None,
+    ) -> BasePromptTemplate:
+        tool_strings = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
+        tool_names = ", ".join([tool.name for tool in tools])
+        format_instructions = format_instructions.format(tool_names=tool_names)
+        template = "\n\n".join(
+            [
+                system_message_prefix,
+                tool_strings,
+                format_instructions,
+                system_message_suffix,
+                human_message,
+            ]
+        )
+        messages = [
+            # SystemMessagePromptTemplate.from_template(template),
+            HumanMessagePromptTemplate.from_template(template),
+        ]
+        if input_variables is None:
+            input_variables = ["input", "agent_scratchpad"]
+        return ChatPromptTemplate(input_variables=input_variables, messages=messages)  # type: ignore  # noqa: E501
 
 
 class Chat(Plugin):
@@ -49,8 +86,11 @@ class Chat(Plugin):
         )
         tools.append(search_tool)
 
-        self.agent = initialize_agent(
-            tools, llm, agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+        self.agent = AgentExecutor.from_agent_and_tools(
+            agent=CustomChatAgent.from_llm_and_tools(llm, tools, callback_manager=None),
+            tools=tools,
+            callback_manager=None,
+            verbose=True,
         )
 
     async def on_private_prefix(self, message: PrivateMessage) -> None:
