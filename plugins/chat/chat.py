@@ -1,10 +1,13 @@
 import os
 import typing
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 import openai
-from langchain.agents import AgentExecutor, Tool, load_tools
+from langchain.agents import Agent, AgentExecutor, AgentOutputParser, Tool, load_tools
 from langchain.agents.chat.base import ChatAgent
+from langchain.base_language import BaseLanguageModel
+from langchain.callbacks.base import BaseCallbackManager
+from langchain.chains.llm import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.base import BasePromptTemplate
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -80,6 +83,44 @@ class CustomChatAgent(ChatAgent):
         if input_variables is None:
             input_variables = ["input", "agent_scratchpad"]
         return ChatPromptTemplate(input_variables=input_variables, messages=messages)  # type: ignore  # noqa: E501
+
+    @classmethod
+    def from_llm_and_tools(
+        cls,
+        llm: BaseLanguageModel,
+        tools: Sequence[BaseTool],
+        callback_manager: Optional[BaseCallbackManager] = None,
+        output_parser: Optional[AgentOutputParser] = None,
+        system_message_prefix: str = SYSTEM_MESSAGE_PREFIX,
+        system_message_suffix: str = SYSTEM_MESSAGE_SUFFIX,
+        human_message: str = HUMAN_MESSAGE,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
+        input_variables: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> Agent:
+        """Construct an agent from an LLM and tools."""
+        cls._validate_tools(tools)
+        prompt = cls.create_prompt(
+            tools,
+            system_message_prefix=system_message_prefix,
+            system_message_suffix=system_message_suffix,
+            human_message=human_message,
+            format_instructions=format_instructions,
+            input_variables=input_variables,
+        )
+        llm_chain = LLMChain(
+            llm=llm,
+            prompt=prompt,
+            callback_manager=callback_manager,
+        )
+        tool_names = [tool.name for tool in tools]
+        _output_parser = output_parser or cls._get_default_output_parser()
+        return cls(
+            llm_chain=llm_chain,
+            allowed_tools=tool_names,
+            output_parser=_output_parser,
+            **kwargs,
+        )
 
 
 class Chat(Plugin):
