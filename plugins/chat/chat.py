@@ -28,6 +28,11 @@ class Chat(Plugin):
         super().__init__(*args, **kwargs)
         openai.api_key = self.openai_api_key
 
+    async def on_group(self, message: GroupMessage) -> None:
+        if not message.at_bot():
+            return
+        await self._chat(message)
+
     async def on_private_prefix(self, message: PrivateMessage) -> None:
         await self._chat(message)
 
